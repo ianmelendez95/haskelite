@@ -35,7 +35,7 @@ pub enum PElem {
   PVar(String),
 
   PNat(u32),
-  PString(String),
+  PChar(char),
   PBool(bool),
 
   PApp(Box<PElem>, Box<PElem>),
@@ -50,51 +50,81 @@ pub fn parse_stack_code(input: &str) {
   if !input.is_ascii() { panic!("Can only parse ASCII text!") }
 
   let mut stack: Vec<PElem> = Vec::new();
-  for line in input.lines() {
-    if line.starts_with("VAR") {
-      stack.push(PVar(String::from(&line[4..])));
-    } else if line.starts_with("CON") {
-      stack.push(parse_const(&line[6..]));
-    } else if line == "APP" {
-      let pop1 = stack.pop().unwrap();
-      let pop2 = stack.pop().unwrap();
-      stack.push(PApp(Box::from(pop1), Box::from(pop2)));
-    } else if line == "LAM" {
-      let pop1 = stack.pop().unwrap();
-      let pop2 = stack.pop().unwrap();
-      stack.push(PLambda(Box::from(pop1), Box::from(pop2)));
-    } else if line == "BIN" {
-      let pop1 = stack.pop().unwrap();
-      let pop2 = stack.pop().unwrap();
-      stack.push(PBind(Box::from(pop1), Box::from(pop2)));
-    } else if line == "LET" {
-      let pop1 = stack.pop().unwrap();
-      let pop2 = stack.pop().unwrap();
-      stack.push(PLet(Box::from(pop1), Box::from(pop2)));
-    } else if line == "LRE" {
-      // pop the bindings
-      let bindings: Vec<PElem>; {
-        let mut bs_temp: Vec<PElem> = Vec::new();
-        let binding_count = line[4..].parse::<usize>().unwrap();
-        for _ in 0..binding_count {
-          bs_temp.push(stack.pop().unwrap());
+  for raw_line in input.lines() {
+    let line = raw_line.trim();
+    match &line[0..3] {
+      // Value Instructions
+
+      // variable
+      "VAR" => {
+        stack.push(PVar(String::from(&line[4..])));
+      },
+      // natural number
+      "NAT" => {
+        stack.push(PNat(line[4..].parse::<u32>().unwrap()))
+      },
+      // char
+      "CHR" => {
+        stack.push(PChar(line[4..].parse::<char>().unwrap()))
+      },
+      // boolean
+      "BOO" => {
+        stack.push(match &line[4..] {
+          "TRUE" => PBool(true),
+          "FALSE" => PBool(false),
+          bool_str => panic!("Unknown boolean value: {}", bool_str)
+        })
+      },
+
+      // Compound Instructions
+
+      // application
+      "APP" => {
+        let pop1 = stack.pop().unwrap();
+        let pop2 = stack.pop().unwrap();
+        stack.push(PApp(Box::from(pop1), Box::from(pop2)));
+      },
+      // lambda
+      "LAM" => {
+        let pop1 = stack.pop().unwrap();
+        let pop2 = stack.pop().unwrap();
+        stack.push(PLambda(Box::from(pop1), Box::from(pop2)));
+      },
+      // binding
+      "BIN" => {
+        let pop1 = stack.pop().unwrap();
+        let pop2 = stack.pop().unwrap();
+        stack.push(PBind(Box::from(pop1), Box::from(pop2)));
+      },
+      // let
+      "LET" => {
+        let pop1 = stack.pop().unwrap();
+        let pop2 = stack.pop().unwrap();
+        stack.push(PLet(Box::from(pop1), Box::from(pop2)));
+      },
+      // letrec
+      "LRE" => {
+        // pop the bindings
+        let bindings: Vec<PElem>; {
+          let mut bs_temp: Vec<PElem> = Vec::new();
+          let binding_count = line[4..].parse::<usize>().unwrap();
+          for _ in 0..binding_count {
+            bs_temp.push(stack.pop().unwrap());
+          }
+          bindings = bs_temp;
         }
-        bindings = bs_temp;
-      }
 
-      // pop the body
-      let pop2 = stack.pop().unwrap();
+        // pop the body
+        let pop2 = stack.pop().unwrap();
 
-      // push the recursive let
-      stack.push(PLrec(bindings, Box::from(pop2)));
+        // push the recursive let
+        stack.push(PLrec(bindings, Box::from(pop2)));
+      },
+      _ => panic!("Unknown stack instruction: {}", line);
     }
   }
 
   return
-}
-
-fn parse_const(input: &str) -> PElem {
-  panic!();
 }
 
 #[cfg(test)]
