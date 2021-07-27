@@ -106,29 +106,6 @@ impl FromStr for SInstr {
   }
 }
 
-// pub fn eval_stack_code(input: &str) -> SElem {
-//   eval_stack_instructions(parse_stack_instructions(input))
-// }
-
-// fn parse_stack_instructions(input: &str) -> Vec<SInstr> {
-//   if !input.is_ascii() { panic!("Can only parse ASCII text!") }
-//
-//   input.lines().map(&parse_stack_instruction).collect()
-// }
-
-// fn eval_stack_instructions<'a>(instrs: Vec<SInstr>) -> SElem<'a> {
-//   let mut stack: Vec<SElem<'a>> = Vec::new();
-//   instrs.iter().for_each(|instr| exec_stack_instruction(&mut stack, instr));
-//
-//   if stack.is_empty() {
-//     panic!("Stack instructions resolved to no element")
-//   } else if stack.len() > 1 {
-//     panic!("Stack instructions did not resolve to single top level element. Final result: {}", )
-//   } else {
-//     stack.pop().unwrap()
-//   }
-// }
-
 fn eval_stack_code(input: &str) -> SElem {
   let mut stack: Vec<SElem> = Vec::new();
   input.lines()
@@ -193,10 +170,10 @@ fn exec_stack_instruction(stack: &mut Vec<SElem>,
 
 fn parse_stack_instruction(line: &str) -> SInstr {
   match &line[0..3] {
-    "VAR" => SIVar(String::from(&line[4..])),
-    "NAT" => SINat(line[4..].parse::<u32>().unwrap()),
-    "CHR" => SIChar(line[4..].parse::<char>().unwrap()),
-    "BOO" => match &line[4..] {
+    "VAR" => SIVar(String::from(line[3..].trim())),
+    "NAT" => SINat(line[3..].trim().parse::<u32>().unwrap()),
+    "CHR" => SIChar(line[3..].trim().parse::<char>().unwrap()),
+    "BOO" => match line[3..].trim() {
       "T" => SIBool(true),
       "F" => SIBool(false),
       bool_str => panic!("Unknown boolean value: {}", bool_str)
@@ -206,7 +183,7 @@ fn parse_stack_instruction(line: &str) -> SInstr {
     "LAM" => SILambda(),
     "BIN" => SIBind(),
     "LET" => SILet(),
-    "LRE" => SILetrec(line[4..].parse::<usize>().unwrap()),
+    "LRE" => SILetrec(line[3..].trim().parse::<usize>().unwrap()),
 
     // fail otherwise
     _ => panic!("Unknown stack instruction: {}", line)
