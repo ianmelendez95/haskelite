@@ -1,4 +1,5 @@
 mod parser;
+mod syntax;
 
 use parser::*;
 

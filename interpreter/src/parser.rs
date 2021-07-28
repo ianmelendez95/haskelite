@@ -1,53 +1,7 @@
-use std::fmt;
+use super::syntax::*;
+use super::syntax::LExpr::*;
 
-use LExpr::*;
-use std::fmt::{Formatter, Debug};
-
-pub enum LExpr<'a> {
-  // constants
-  LNat(u32),
-  LChar(char),
-  LBool(bool), 
-
-  // variable
-  LVar(&'a str),
-
-  // abstractions
-  LApp(Box<LExpr<'a>>, Box<LExpr<'a>>),
-  LLambda(&'a str, Box<LExpr<'a>>),
-
-  // enriched bindings
-  LLet(LBind<'a>, Box<LExpr<'a>>),
-  LLrec(Vec<LBind<'a>>, Box<LExpr<'a>>)
-}
-
-pub struct LBind<'a> {
-  var: &'a str,
-  val: Box<LExpr<'a>>
-}
-
-impl Debug for LExpr<'_> {
-  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-    match self {
-      LNat(n) => write!(f, "{}", n),
-      LChar(c) => write!(f, "{}", c),
-      LBool(b) => write!(f, "{}", b),
-      LVar(v) => write!(f, "{}", v),
-      LApp(e1, e2) => write!(f, "( {:?} {:?} )", e1, e2),
-      LLambda(v, b) => write!(f, "(\\ {:?} . {:?} )", v, b),
-      LLet(bind, body) => write!(f, "( let {:?} in {:?} )", bind, body),
-      LLrec(binds, body) => write!(f, "( letrec {:?} in {:?} )", binds, body)
-    }
-  }
-}
-
-impl Debug for LBind<'_> {
-  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-    write!(f, "{:?} = {:?}", self.var, self.val)
-  }
-}
-
-pub fn parse_stack_code(input: &str) -> Box<LExpr> {
+pub fn parse_stack_code(input: &str) -> LExpr {
   let mut stack: Vec<LExpr> = Vec::new();
 
   for line in input.lines() {
@@ -56,7 +10,7 @@ pub fn parse_stack_code(input: &str) -> Box<LExpr> {
     match opcode {
       "VAR" => {
         if opand.is_empty() { panic!("VAR (variable) instruction expects var name operand: {}", line) }
-        stack.push(LVar(opand))
+        stack.push(LVar(String::from(*opand)))
       },
       "NAT" => stack.push(LNat(opand.parse::<u32>().unwrap())),
       "CHR" => stack.push(LChar(parse_char_opand(opand))),
@@ -77,12 +31,17 @@ pub fn parse_stack_code(input: &str) -> Box<LExpr> {
 
         let body = stack.pop().unwrap();
 
-        stack.push(LLambda(var, Box::from(body)))
+        stack.push(LLambda(String::from(var), Box::from(body)))
       },
       "LET" => {
         let bind_val = stack.pop().unwrap();
         let body = stack.pop().unwrap();
-        stack.push(LLet(LBind { var: opand, val: Box::from(bind_val) }, Box::from(body)))
+        stack.push(LLet(
+          LBind {
+            var: String::from(*opand),
+            val: Box::from(bind_val),
+          },
+          Box::from(body)))
       },
       "LRE" => {
         let mut binding_vars: Vec<&str> = opand.split_whitespace().collect();
@@ -92,7 +51,10 @@ pub fn parse_stack_code(input: &str) -> Box<LExpr> {
         for _ in 0..binding_vars.len() {
           let var = binding_vars.pop().unwrap();
           let val = stack.pop().unwrap();
-          let binding: LBind = LBind { var, val: Box::from(val) };
+          let binding = LBind {
+            var: String::from(var),
+            val: Box::from(val),
+          };
           bindings.push(binding);
         }
 
@@ -110,7 +72,7 @@ pub fn parse_stack_code(input: &str) -> Box<LExpr> {
   } else if stack.len() > 1 {
     panic!("Stack instructions did not resolve to single top level element. Final result: {:?}", stack)
   } else {
-    Box::from(stack.pop().unwrap())
+    stack.pop().unwrap()
   }
 }
 
