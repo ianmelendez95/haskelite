@@ -1,7 +1,12 @@
 mod parser;
 mod syntax;
+mod evaluator;
 
+use std::io::{self, Read};
 use parser::*;
+use crate::evaluator::evaluate;
+use syntax::LExpr;
+use std::fs::read;
 
 const TEXT: &str = "\
 NAT 20
@@ -10,7 +15,15 @@ APP
 ";
 
 fn main() {
-  let mut stack_code = String::new();
-  stack_code.push_str(TEXT);
-  println!("Result: {:?}", parse_stack_code(&*stack_code))
+  println!("{}", eval_stack_code(&read_stdin()))
+}
+
+fn read_stdin() -> String {
+  let mut buffer = String::new();
+  io::stdin().read_to_string(&mut buffer).expect("Unable to read stack code");
+  buffer
+}
+
+fn eval_stack_code(code: &str) -> LExpr {
+  evaluator::evaluate(parser::parse_stack_code(code))
 }
