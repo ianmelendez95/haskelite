@@ -36,7 +36,7 @@ impl fmt::Display for LExpr {
       LApp(e1, e2) => write!(f, "( {} {} )", e1, e2),
       LLambda(v, b) => write!(f, "(\\ {} . {} )", v, b),
       LLet(bind, body) =>
-        write!(f, "( let {} in {} )", bind, body),
+        write!(f, "( let {{ {} }} in {} )", bind, body),
       LLrec(binds, body) => {
         write!(f, "( letrec {{ ")?;
 
