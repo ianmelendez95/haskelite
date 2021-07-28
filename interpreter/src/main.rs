@@ -1,10 +1,13 @@
 mod parser;
 
 use parser::*;
-use parser::LExpr::*;
 
-const TEXT: &str = "true";
+const TEXT: &str = "\
+NAT 20
+VAR ADD
+APP
+";
 
 fn main() {
-  panic!();
+  println!("Result: {:?}", parse_stack_code(TEXT))
 }

@@ -1,193 +1,125 @@
 use std::fmt;
-use std::str::FromStr;
 
 use LExpr::*;
-use SElem::*;
-use SInstr::*;
 use std::fmt::{Formatter, Debug};
-use std::string::ParseError;
-use std::collections::VecDeque;
 
-pub enum LExpr {
+pub enum LExpr<'a> {
   // constants
   LNat(u32),
-  LString(String),
+  LChar(char),
   LBool(bool), 
 
   // variable
-  LVar(String),
+  LVar(&'a str),
 
   // abstractions
-  LApp(Box<LExpr>, Box<LExpr>),
-  LLambda(String, Box<LExpr>),
+  LApp(Box<LExpr<'a>>, Box<LExpr<'a>>),
+  LLambda(&'a str, Box<LExpr<'a>>),
 
   // enriched bindings
-  LLet(LBind, Box<LExpr>),
-  LLetrec(Vec<LBind>, Box<LExpr>)
+  LLet(LBind<'a>, Box<LExpr<'a>>),
+  LLrec(Vec<LBind<'a>>, Box<LExpr<'a>>)
 }
 
-pub struct LBind {
-  var: String,
-  body: Box<LExpr>
+pub struct LBind<'a> {
+  var: &'a str,
+  val: Box<LExpr<'a>>
 }
 
-/// Stack Element
-///
-/// Represents elements as parsed blindly
-/// in the stack parser.
-///
-/// Intended to be validated and finally
-/// coerced into the final LExpr
-pub enum SElem {
-  SVar(String),
-
-  SNat(u32),
-  SChar(char),
-  SBool(bool),
-
-  SApp(Box<SElem>, Box<SElem>),
-  SLambda(Box<SElem>, Box<SElem>),
-
-  SBind(Box<SElem>, Box<SElem>), // (var, expr)
-  SLet(Box<SElem>, Box<SElem>),  // (binding, body)
-  SLrec(Vec<SElem>, Box<SElem>), // (bindings, body)
-}
-
-impl Debug for SElem {
+impl Debug for LExpr<'_> {
   fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
     match self {
-      SVar(v) => write!(f, "{}", v),
-      SNat(n) => write!(f, "{}", n),
-      SChar(c) => write!(f, "{}", c),
-      SBool(b) => write!(f, "{}", b),
-      SApp(l, r) => write!(f, "( {:?} {:?} )", l, r),
-      SLambda(v, b) => write!(f, "(\\ {:?} . {:?} )", v, b),
-      SBind(var, val) => write!(f, "{:?} = {:?}", var, val),
-      SLet(bind, body) => write!(f, "( LET {:?} IN {:?} )", bind, body),
-      SLrec(binds, body) => write!(f, "( LETREC {:?} IN {:?} )", binds, body)
+      LNat(n) => write!(f, "{}", n),
+      LChar(c) => write!(f, "{}", c),
+      LBool(b) => write!(f, "{}", b),
+      LVar(v) => write!(f, "{}", v),
+      LApp(e1, e2) => write!(f, "( {:?} {:?} )", e1, e2),
+      LLambda(v, b) => write!(f, "(\\ {:?} . {:?} )", v, b),
+      LLet(bind, body) => write!(f, "( let {:?} in {:?} )", bind, body),
+      LLrec(binds, body) => write!(f, "( letrec {:?} in {:?} )", binds, body)
     }
   }
 }
 
-// stack instructions
-pub enum SInstr {
-  SIVar(String),
-  SINat(u32),
-  SIChar(char),
-  SIBool(bool),
-  SIApp(),
-  SILambda(),
-  SIBind(),
-  SILet(),
-  SILetrec(usize) // (binding count)
+impl Debug for LBind<'_> {
+  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    write!(f, "{:?} = {:?}", self.var, self.val)
+  }
 }
 
-impl fmt::Display for SInstr {
-  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-    match self {
-      SIVar(v) => write!(f, "VAR {}", v),
-      SINat(n) => write!(f, "NAT {}", n),
-      SIChar(c) => write!(f, "CHR {}", c),
-      SIBool(b) => write!(f, "BOO {}", b),
-      SIApp() => write!(f, "APP"),
-      SILambda() => write!(f, "LAM"),
-      SIBind() => write!(f, "BIN"),
-      SILet() => write!(f, "LET"),
-      SILetrec(bc) => write!(f, "LRE {}", bc)
+pub fn parse_stack_code(input: &str) -> Box<LExpr> {
+  let mut stack: Vec<LExpr> = Vec::new();
+
+  for line in input.lines() {
+    let opcode = &line[0..3];
+    let opand = &line[3..].trim();
+    match opcode {
+      "VAR" => {
+        if opand.is_empty() { panic!("VAR (variable) instruction expects var name operand: {}", line) }
+        stack.push(LVar(opand))
+      },
+      "NAT" => stack.push(LNat(opand.parse::<u32>().unwrap())),
+      "CHR" => stack.push(LChar(parse_char_opand(opand))),
+      "BOO" => stack.push(match opand.trim() {
+        "T" => LBool(true),
+        "F" => LBool(false),
+        bool_str => panic!("BOO expects either 'T' or 'F' operand: {}", bool_str)
+      }),
+      "APP" => {
+        let e1 = stack.pop().unwrap();
+        let e2 = stack.pop().unwrap();
+
+        stack.push(LApp(Box::from(e1), Box::from(e2)))
+      },
+      "LAM" => {
+        let var = opand.trim();
+        if var.is_empty() { panic!("LAM (lambda) instruction expects var name operand: {}", line) }
+
+        let body = stack.pop().unwrap();
+
+        stack.push(LLambda(var, Box::from(body)))
+      },
+      "LET" => {
+        let bind_val = stack.pop().unwrap();
+        let body = stack.pop().unwrap();
+        stack.push(LLet(LBind { var: opand, val: Box::from(bind_val) }, Box::from(body)))
+      },
+      "LRE" => {
+        let mut binding_vars: Vec<&str> = opand.split_whitespace().collect();
+        let mut bindings: Vec<LBind> = Vec::new();
+
+        binding_vars.reverse(); // reverse so we pop in the right order
+        for _ in 0..binding_vars.len() {
+          let var = binding_vars.pop().unwrap();
+          let val = stack.pop().unwrap();
+          let binding: LBind = LBind { var, val: Box::from(val) };
+          bindings.push(binding);
+        }
+
+        let body = stack.pop().unwrap();
+        stack.push(LLrec(bindings, Box::from(body)))
+      },
+
+      // fail otherwise
+      _ => panic!("Unknown stack instruction: {}", line)
     }
   }
-}
-
-impl FromStr for SInstr {
-  type Err = ParseError;
-
-  fn from_str(s: &str) -> Result<Self, Self::Err> {
-    Ok(parse_stack_instruction(s))
-  }
-}
-
-fn eval_stack_code(input: &str) -> SElem {
-  let mut stack: Vec<SElem> = Vec::new();
-  input.lines()
-    .map(&parse_stack_instruction)
-    .for_each(|instr| exec_stack_instruction(&mut stack, instr));
 
   if stack.is_empty() {
     panic!("Stack instructions resolved to no element")
   } else if stack.len() > 1 {
     panic!("Stack instructions did not resolve to single top level element. Final result: {:?}", stack)
   } else {
-    stack.pop().unwrap()
+    Box::from(stack.pop().unwrap())
   }
 }
 
-fn exec_stack_instruction(stack: &mut Vec<SElem>,
-                          instr: SInstr) {
-  match instr {
-    SIVar(var) => stack.push(SVar(var)),
-    SINat(nat) => stack.push(SNat(nat)),
-    SIChar(c) => stack.push(SChar(c)),
-    SIBool(bool) => stack.push(SBool(bool)),
-    SIApp() => {
-      let pop1 = stack.pop().unwrap();
-      let pop2 = stack.pop().unwrap();
-      stack.push(SApp(Box::from(pop1), Box::from(pop2)));
-    },
-    SILambda() => {
-      let pop1 = stack.pop().unwrap();
-      let pop2 = stack.pop().unwrap();
-      stack.push(SLambda(Box::from(pop1), Box::from(pop2)));
-    },
-    SIBind() => {
-      let pop1 = stack.pop().unwrap();
-      let pop2 = stack.pop().unwrap();
-      stack.push(SBind(Box::from(pop1), Box::from(pop2)));
-    },
-    SILet() => {
-      let pop1 = stack.pop().unwrap();
-      let pop2 = stack.pop().unwrap();
-      stack.push(SLet(Box::from(pop1), Box::from(pop2)));
-    },
-    SILetrec(binding_count) => {
-      // pop the bindings
-      let bindings: Vec<SElem>; {
-        let mut bs_temp: Vec<SElem> = Vec::new();
-        for _ in 0..binding_count {
-          bs_temp.push(stack.pop().unwrap());
-        }
-        bindings = bs_temp;
-      }
-
-      // pop the body
-      let pop2 = stack.pop().unwrap();
-
-      // push the recursive let
-      stack.push(SLrec(bindings, Box::from(pop2)));
-    }
+fn parse_char_opand(opand: &str) -> char {
+  if !opand.starts_with("\"") || !opand.ends_with("\"") {
+    panic!("CHR opand must be a valid char surrounded by double quotes '\"': {}", opand)
   }
-}
 
-
-fn parse_stack_instruction(line: &str) -> SInstr {
-  match &line[0..3] {
-    "VAR" => SIVar(String::from(line[3..].trim())),
-    "NAT" => SINat(line[3..].trim().parse::<u32>().unwrap()),
-    "CHR" => SIChar(line[3..].trim().parse::<char>().unwrap()),
-    "BOO" => match line[3..].trim() {
-      "T" => SIBool(true),
-      "F" => SIBool(false),
-      bool_str => panic!("Unknown boolean value: {}", bool_str)
-    },
-
-    "APP" => SIApp(),
-    "LAM" => SILambda(),
-    "BIN" => SIBind(),
-    "LET" => SILet(),
-    "LRE" => SILetrec(line[3..].trim().parse::<usize>().unwrap()),
-
-    // fail otherwise
-    _ => panic!("Unknown stack instruction: {}", line)
-  }
+  opand.parse::<char>().unwrap()
 }
 
 #[cfg(test)]
