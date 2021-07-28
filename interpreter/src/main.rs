@@ -9,5 +9,7 @@ APP
 ";
 
 fn main() {
-  println!("Result: {:?}", parse_stack_code(TEXT))
+  let mut stack_code = String::new();
+  stack_code.push_str(TEXT);
+  println!("Result: {:?}", parse_stack_code(&*stack_code))
 }
