@@ -7,6 +7,7 @@ use parser::*;
 use crate::evaluator::evaluate;
 use syntax::LExpr;
 use std::fs::read;
+use crate::syntax::LExpr::LBool;
 
 const TEXT: &str = "\
 NAT 20
@@ -25,5 +26,6 @@ fn read_stdin() -> String {
 }
 
 fn eval_stack_code(code: &str) -> LExpr {
-  evaluator::evaluate(parser::parse_stack_code(code))
+  // evaluator::evaluate(parser::parse_stack_code(code))
+  return LBool(false)
 }
