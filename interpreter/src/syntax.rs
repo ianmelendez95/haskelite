@@ -9,6 +9,9 @@ pub enum LExpr {
   LChar(char),
   LBool(bool),
 
+  // builtin function
+  LFun(String),
+
   // variable
   LVar(String),
 
@@ -33,6 +36,7 @@ impl fmt::Display for LExpr {
       LChar(c) => write!(f, "{}", c),
       LBool(b) => write!(f, "{}", b),
       LVar(v) => write!(f, "{}", v),
+      LFun(fun) => write!(f, "{}", fun),
       LApp(e1, e2) => write!(f, "( {} {} )", e1, e2),
       LLambda(v, b) => write!(f, "(\\ {} . {} )", v, b),
       LLet(bind, body) =>
@@ -67,6 +71,7 @@ impl Debug for LExpr {
       LChar(c) => write!(f, "{}", c),
       LBool(b) => write!(f, "{}", b),
       LVar(v) => write!(f, "{}", v),
+      LFun(fun) => write!(f, "{}", fun),
       LApp(e1, e2) => write!(f, "( {:?} {:?} )", e1, e2),
       LLambda(v, b) => write!(f, "(\\ {:?} . {:?} )", v, b),
       LLet(bind, body) => write!(f, "( let {:?} in {:?} )", bind, body),

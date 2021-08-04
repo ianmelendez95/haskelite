@@ -14,11 +14,15 @@ pub fn parse_stack_code(input: &str) -> LExpr {
       },
       "NAT" => stack.push(LNat(opand.parse::<u32>().unwrap())),
       "CHR" => stack.push(LChar(parse_char_opand(opand))),
-      "BOO" => stack.push(match opand.trim() {
+      "BOO" => stack.push(match *opand {
         "T" => LBool(true),
         "F" => LBool(false),
         bool_str => panic!("BOO expects either 'T' or 'F' operand: {}", bool_str)
       }),
+      "FUN" => {
+        if opand.is_empty() { panic!("FUN (builtin function) instruction expects function name operand: {}", line) }
+        stack.push(LVar(String::from(*opand)))
+      },
       "APP" => {
         let e1 = stack.pop().unwrap();
         let e2 = stack.pop().unwrap();
