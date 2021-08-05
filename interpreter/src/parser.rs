@@ -1,5 +1,6 @@
 use super::syntax::*;
 use super::syntax::LExpr::*;
+use crate::syntax::LFun::LFPlus;
 
 pub fn parse_stack_code(input: &str) -> LExpr {
   let mut stack: Vec<LExpr> = Vec::new();
@@ -20,8 +21,7 @@ pub fn parse_stack_code(input: &str) -> LExpr {
         bool_str => panic!("BOO expects either 'T' or 'F' operand: {}", bool_str)
       }),
       "FUN" => {
-        if opand.is_empty() { panic!("FUN (builtin function) instruction expects function name operand: {}", line) }
-        stack.push(LVar(String::from(*opand)))
+        stack.push(LFun(parse_builtin_fun(opand)))
       },
       "APP" => {
         let e1 = stack.pop().unwrap();
@@ -88,16 +88,9 @@ fn parse_char_opand(opand: &str) -> char {
   opand.parse::<char>().unwrap()
 }
 
-#[cfg(test)]
-pub mod tests {
-  use super::*;
-
-  #[test]
-  pub fn test_parse_bool() {
-    let (result, _) = parse_bool("true").unwrap();
-    match result {
-      LExpr::LBool(true) => (),
-      _ => panic!("Didn't return a boolean")
-    }
+fn parse_builtin_fun(opand: &str) -> LFun {
+  match opand {
+    "+" => LFPlus(),
+    _ => panic!("Unknown builtin function: {}", opand)
   }
 }

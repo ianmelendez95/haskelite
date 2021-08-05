@@ -3,6 +3,7 @@ use std::fmt::{Formatter, Debug};
 
 use LExpr::*;
 
+#[derive(PartialEq,Debug)]
 pub enum LExpr {
   // constants
   LNat(u32),
@@ -10,7 +11,7 @@ pub enum LExpr {
   LBool(bool),
 
   // builtin function
-  LFun(String),
+  LFun(LFun),
 
   // variable
   LVar(String),
@@ -24,6 +25,12 @@ pub enum LExpr {
   LLrec(Vec<LBind>, Box<LExpr>)
 }
 
+#[derive(PartialEq,Debug)]
+pub enum LFun {
+  LFPlus()
+}
+
+#[derive(PartialEq,Debug)]
 pub struct LBind {
   pub var: String,
   pub val: Box<LExpr>
@@ -57,32 +64,18 @@ impl fmt::Display for LExpr {
 
 }
 
-impl fmt::Display for LBind {
-  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-    let LBind { var, val } = self;
-    write!(f, "{} = {}", var, val)
-  }
-}
-
-impl Debug for LExpr {
+impl fmt::Display for LFun {
   fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
     match self {
-      LNat(n) => write!(f, "{}", n),
-      LChar(c) => write!(f, "{}", c),
-      LBool(b) => write!(f, "{}", b),
-      LVar(v) => write!(f, "{}", v),
-      LFun(fun) => write!(f, "{}", fun),
-      LApp(e1, e2) => write!(f, "( {:?} {:?} )", e1, e2),
-      LLambda(v, b) => write!(f, "(\\ {:?} . {:?} )", v, b),
-      LLet(bind, body) => write!(f, "( let {:?} in {:?} )", bind, body),
-      LLrec(binds, body) => write!(f, "( letrec {:?} in {:?} )", binds, body)
+      LFun::LFPlus() => write!(f, "+")
     }
   }
 }
 
-impl Debug for LBind {
+impl fmt::Display for LBind {
   fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-    write!(f, "{:?} = {:?}", self.var, self.val)
+    let LBind { var, val } = self;
+    write!(f, "{} = {}", var, val)
   }
 }
 
