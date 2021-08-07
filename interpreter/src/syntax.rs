@@ -27,7 +27,8 @@ pub enum LExpr {
 
 #[derive(PartialEq,Debug,Copy,Clone)]
 pub enum LFun {
-  LFPlus()
+  LFPlus(),
+  LFIf()
 }
 
 #[derive(PartialEq,Debug,Clone)]
@@ -67,7 +68,8 @@ impl fmt::Display for LExpr {
 impl fmt::Display for LFun {
   fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
     match self {
-      LFun::LFPlus() => write!(f, "+")
+      LFun::LFPlus() => write!(f, "+"),
+      LFun::LFIf() => write!(f, "IF")
     }
   }
 }

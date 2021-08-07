@@ -44,6 +44,13 @@ fn eval_app(cur_expr: LExpr,
           let arg2 = eval(app_spine.pop().unwrap());
 
           builtin_plus(arg1, arg2)
+        },
+        LFIf() => {
+          let cond = app_spine.pop().unwrap();
+          let true_val = app_spine.pop().unwrap();
+          let false_val = app_spine.pop().unwrap();
+
+          builtin_if(cond, true_val, false_val)
         }
       }
     }
@@ -60,6 +67,15 @@ fn eval_app(cur_expr: LExpr,
     LLrec(_, _) => {
       panic!("Not implemented")
     }
+  }
+}
+
+fn builtin_if(cond: LExpr, true_val: LExpr, false_val: LExpr) -> LExpr {
+  match eval(cond) {
+    LBool(bool) => {
+      if bool { true_val } else { false_val }
+    },
+    res => panic!("IF condition should evaluate to boolean: {}", res)
   }
 }
 

@@ -92,6 +92,7 @@ fn parse_char_opand(opand: &str) -> char {
 fn parse_builtin_fun(opand: &str) -> syntax::LFun {
   match opand {
     "+" => LFPlus(),
+    "IF" => LFIf(),
     _ => panic!("Unknown builtin function: {}", opand)
   }
 }
