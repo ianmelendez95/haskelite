@@ -25,8 +25,8 @@ pub fn parse_stack_code(input: &str) -> LExpr {
         stack.push(LFun(parse_builtin_fun(opand)))
       },
       "APP" => {
-        let e1 = stack.pop().unwrap();
-        let e2 = stack.pop().unwrap();
+        let e1 = stack.pop().expect("APP missing first argument");
+        let e2 = stack.pop().expect("APP missing second argument");
 
         stack.push(LApp(Box::from(e1), Box::from(e2)))
       },

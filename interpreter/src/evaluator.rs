@@ -16,7 +16,7 @@ fn eval(expr: LExpr) -> LExpr {
     LApp(e1, e2) => {
       let mut app_spine = Vec::new();
       app_spine.push(*e2);
-      eval_app(*e1, &mut app_spine)
+      eval(eval_app(*e1, &mut app_spine))
     }
     LLambda(_, _) => {
       panic!("Not implemented")
