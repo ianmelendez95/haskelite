@@ -58,10 +58,10 @@ def exec_test(s_file, out_file):
     with open(out_file, 'r') as f:
         expected_out = f.readlines()
 
-    diff = list(difflib.unified_diff(expected_out, eval_res))
+    diff = list(difflib.unified_diff(expected_out, eval_res, fromfile=s_file, tofile=out_file, lineterm='\n'))
 
     if len(diff) != 0:
-        raise TestFailure("Output did not match expected\n{}".format(''.join(diff)))
+        raise TestFailure("Output did not match expected\n{}".format('\n'.join(diff)))
 
 
 for n, fs in collect_test_files(os.path.join(TESTSUITE_DIR, "tests/should-succeed")).items():
