@@ -40,15 +40,15 @@ fn eval_app(cur_expr: LExpr,
     LFun(fun) => {
       return match fun {
         LFPlus() => {
-          let arg1 = eval(app_spine.pop().unwrap());
-          let arg2 = eval(app_spine.pop().unwrap());
+          let arg1 = app_spine.pop().expect("+ missing first argument");
+          let arg2 = app_spine.pop().expect("+ missing second argument");
 
           builtin_plus(arg1, arg2)
         },
         LFIf() => {
-          let cond = app_spine.pop().unwrap();
-          let true_val = app_spine.pop().unwrap();
-          let false_val = app_spine.pop().unwrap();
+          let cond = app_spine.pop().expect("IF missing condition");
+          let true_val = app_spine.pop().expect("IF missing true clause");
+          let false_val = app_spine.pop().expect("IF missing false clause");
 
           builtin_if(cond, true_val, false_val)
         }
@@ -80,14 +80,14 @@ fn builtin_if(cond: LExpr, true_val: LExpr, false_val: LExpr) -> LExpr {
 }
 
 fn builtin_plus(x: LExpr, y: LExpr) -> LExpr {
-  match x {
+  match eval(x) {
     LNat(n_x) => {
-      match y {
+      match eval(y) {
         LNat(n_y) => LNat(n_x + n_y),
-        _ => panic!("Expecting natural numbers for summation, x = {}", x)
+        _ => panic!("Expecting natural numbers for summation, first argument = {}", x)
       }
     }
-    _ => panic!("Expecting natural numbers for summation, y = {}", y)
+    _ => panic!("Expecting natural numbers for summation, second argument = {}", y)
   }
 }
 
