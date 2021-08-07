@@ -73,7 +73,7 @@ for n, fs in collect_test_files(os.path.join(TESTSUITE_DIR, "tests/should-succee
         print("FAILED - missing output file")
 
     try:
-        res = exec_test(fs["in"], fs["out"])
+        exec_test(fs["in"], fs["out"])
         print("PASSED")
     except TestFailure as tf:
         print("FAILED\n{}".format(tf.msg))
