@@ -3,7 +3,7 @@ use std::fmt::{Formatter, Debug};
 
 use LExpr::*;
 
-#[derive(PartialEq,Debug)]
+#[derive(PartialEq,Debug,Clone)]
 pub enum LExpr {
   // constants
   LNat(u32),
@@ -25,12 +25,12 @@ pub enum LExpr {
   LLrec(Vec<LBind>, Box<LExpr>)
 }
 
-#[derive(PartialEq,Debug)]
+#[derive(PartialEq,Debug,Copy,Clone)]
 pub enum LFun {
   LFPlus()
 }
 
-#[derive(PartialEq,Debug)]
+#[derive(PartialEq,Debug,Clone)]
 pub struct LBind {
   pub var: String,
   pub val: Box<LExpr>

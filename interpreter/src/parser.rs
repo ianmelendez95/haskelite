@@ -1,6 +1,7 @@
-use super::syntax::*;
-use super::syntax::LExpr::*;
-use crate::syntax::LFun::LFPlus;
+use crate::syntax;
+use crate::syntax::*;
+use crate::syntax::LExpr::*;
+use crate::syntax::LFun::*;
 
 pub fn parse_stack_code(input: &str) -> LExpr {
   let mut stack: Vec<LExpr> = Vec::new();
@@ -88,7 +89,7 @@ fn parse_char_opand(opand: &str) -> char {
   opand.parse::<char>().unwrap()
 }
 
-fn parse_builtin_fun(opand: &str) -> LFun {
+fn parse_builtin_fun(opand: &str) -> syntax::LFun {
   match opand {
     "+" => LFPlus(),
     _ => panic!("Unknown builtin function: {}", opand)
