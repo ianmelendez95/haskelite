@@ -84,9 +84,8 @@ fn eval_app(cur_expr: LExpr,
       eval_app(*e1, app_spine)
     }
     LLambda(l_var, l_body) => {
-      let subst_thunk =
-        LThunkUnEvaled(app_spine.pop().expect(format!("lambda: missing value: l_var='{}'", l_var).as_str()));
-      let subst_ref = Rc::from(RefCell::from(subst_thunk));
+      let subst_val = app_spine.pop().expect(format!("lambda: missing value: l_var='{}'", l_var).as_str());
+      let subst_ref = Rc::from(RefCell::from(LThunkUnEvaled(subst_val)));
 
       instantiate_lambda(&l_var, &l_body, subst_ref)
     }
