@@ -2,6 +2,11 @@ use std::fmt;
 use std::fmt::{Formatter, Debug};
 
 use LExpr::*;
+use std::rc::Rc;
+use std::borrow::Borrow;
+use std::cell::{RefCell, Ref};
+use std::ops::DerefMut;
+use std::io::empty;
 
 #[derive(PartialEq,Debug,Clone)]
 pub enum LExpr {
@@ -22,7 +27,17 @@ pub enum LExpr {
 
   // enriched bindings
   LLet(LBind, Box<LExpr>),
-  LLrec(Vec<LBind>, Box<LExpr>)
+  LLrec(Vec<LBind>, Box<LExpr>),
+
+  // runtime values
+  LThunkRef(Rc<RefCell<LThunk>>)
+}
+
+#[derive(PartialEq,Debug,Clone)]
+pub enum LThunk {
+  LThunkUnEvaled(LExpr),
+  LThunkEvaling(),
+  LThunkEvaled(LExpr)
 }
 
 #[derive(PartialEq,Debug,Copy,Clone)]
@@ -60,6 +75,11 @@ impl fmt::Display for LExpr {
 
         write!(f, " }} in {} )", body)
       }
+      LThunkRef(shared) => {
+        let ref_cell: &RefCell<LThunk> = &shared;
+        let thunk: &LThunk = &ref_cell.borrow();
+        write!(f, "{}", thunk)
+      }
     }
   }
 
@@ -70,6 +90,16 @@ impl fmt::Display for LFun {
     match self {
       LFun::LFPlus() => write!(f, "+"),
       LFun::LFIf() => write!(f, "IF")
+    }
+  }
+}
+
+impl fmt::Display for LThunk {
+  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    match self {
+      LThunk::LThunkEvaled(e) => write!(f, "{}", e),
+      LThunk::LThunkUnEvaled(e) => write!(f, "[ {} ]", e),
+      LThunk::LThunkEvaling() => panic!("Displaying a thunk under evaluation!")
     }
   }
 }

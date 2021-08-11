@@ -1,6 +1,11 @@
 use super::syntax::*;
 use super::syntax::LExpr::*;
 use super::syntax::LFun::*;
+use std::rc;
+use std::rc::Rc;
+use std::ops::Deref;
+use std::cell::{Ref, RefCell};
+use crate::syntax::LThunk::*;
 
 pub fn evaluate(expr: LExpr) -> LExpr {
   eval(expr)
@@ -26,6 +31,31 @@ fn eval(expr: LExpr) -> LExpr {
     }
     LLrec(_, _) => {
       panic!("Not implemented")
+    }
+    LThunkRef(shared_expr) => {
+      let ref_thunk: &LThunk = &shared_expr.borrow();
+      match ref_thunk {
+        LThunkEvaled(expr) => {
+          return expr.clone()
+        },
+        LThunkEvaling() => {
+          panic!("Evaling thunk that is already being evaled (possibly a circular reference)");
+        },
+        LThunkUnEvaled(_) => {
+          // continue, evaluating the thunk
+        }
+      }
+
+      let thunk: LThunk = shared_expr.replace(LThunkEvaling());
+      match thunk {
+        LThunkEvaling() => panic!("Expecting un-evaluated thunk"),
+        LThunkEvaled(_) => panic!("Expecting un-evaluated thunk"),
+        LThunkUnEvaled(expr) => {
+          let evaled_expr = eval(expr);
+          shared_expr.replace(LThunkEvaled(evaled_expr.clone()));
+          evaled_expr
+        }
+      }
     }
   }
 }
@@ -58,8 +88,12 @@ fn eval_app(cur_expr: LExpr,
       app_spine.push(*e2);
       eval_app(*e1, app_spine)
     }
-    LLambda(_, _) => {
-      panic!("Not implemented")
+    LLambda(l_var, l_body) => {
+      let subst_thunk =
+        LThunkUnEvaled(app_spine.pop().expect(format!("lambda: missing value: l_var='{}'", l_var).as_str()));
+      let subst_ref = Rc::from(RefCell::from(subst_thunk));
+
+      instantiate_lambda(&l_var, &l_body, subst_ref)
     }
     LLet(_, _) => {
       panic!("Not implemented")
@@ -67,7 +101,86 @@ fn eval_app(cur_expr: LExpr,
     LLrec(_, _) => {
       panic!("Not implemented")
     }
+    LThunkRef(_) => {
+      panic!("Not implemented")
+    }
   }
+}
+
+fn instantiate_lambda(l_var: &str, l_expr: &LExpr, subst_val: Rc<RefCell<LThunk>>) -> LExpr {
+  match l_expr {
+    LNat(n) => LNat(*n),
+    LChar(c) => LChar(*c),
+    LBool(b) => LBool(*b),
+    LFun(f) => LFun(*f),
+    LVar(v) => {
+      if v == l_var {
+        LThunkRef(subst_val)
+      } else {
+        LVar(v.clone())
+      }
+    }
+    LApp(e1, e2) => {
+      let new_e1 = instantiate_lambda(l_var, e1, subst_val.clone()); // this clone could be wasteful, if var isn't free in e1
+      let new_e2 = instantiate_lambda(l_var, e2, subst_val);
+
+      LApp(Box::from(new_e1), Box::from(new_e2))
+    }
+    LLambda(v, b) => {
+      if l_var == v {
+        // l_var cannot free in b, so we know we can simply clone the body
+        LLambda(v.clone(), b.clone())
+      } else {
+        let new_b = instantiate_lambda(l_var, b, subst_val);
+
+        LLambda(v.clone(), Box::from(new_b))
+      }
+    }
+    LLet(bind, body) => {
+      let LBind { var: b_var, val: b_val } = bind;
+
+      if b_var == l_var {
+        // l_var is not free in val or body, so simply clone
+        l_expr.clone()
+      } else {
+        let new_bind = instantiate_binding(l_var, b_var, b_val, subst_val.clone());
+        let new_body = instantiate_lambda(l_var, body, subst_val);
+
+        LLet(new_bind, Box::from(new_body))
+      }
+    }
+    LLrec(binds, b_body) => {
+      if var_bound_in_bindings(l_var, binds) {
+        // l_var is not free in expression, so simply clone
+        l_expr.clone()
+      } else {
+        let new_binds = binds.iter()
+          .map(| binding |
+            instantiate_binding(l_var,
+                                &binding.var,
+                                &binding.val,
+                                subst_val.clone()))
+          .collect();
+        let new_body = instantiate_lambda(l_var, b_body, subst_val);
+
+        LLrec(new_binds, Box::from(new_body))
+      }
+    }
+    LThunkRef(shared_expr) => {
+      LThunkRef(shared_expr.clone())
+    }
+  }
+}
+
+fn instantiate_binding(l_var: &str, b_var: &str, b_val: &LExpr, subst_val: Rc<RefCell<LThunk>>) -> LBind {
+  let new_b_var = String::from(b_var);
+  let new_b_val = instantiate_lambda(l_var, b_val, subst_val);
+
+  LBind { var: new_b_var, val: Box::from(new_b_val) }
+}
+
+fn var_bound_in_bindings(var: &str, bindings: &Vec<LBind>) -> bool {
+  bindings.iter().any(| binding | binding.var == var)
 }
 
 fn builtin_if(cond: LExpr, true_val: LExpr, false_val: LExpr) -> LExpr {
@@ -84,10 +197,10 @@ fn builtin_plus(x: LExpr, y: LExpr) -> LExpr {
     LNat(n_x) => {
       match eval(y) {
         LNat(n_y) => LNat(n_x + n_y),
-        _ => panic!("Expecting natural numbers for summation, first argument = {}", x)
+        y_val => panic!("+: second argument is not a number: {}", y_val)
       }
     }
-    _ => panic!("Expecting natural numbers for summation, second argument = {}", y)
+    x_val => panic!("+: first argument is not a number: {}", x_val)
   }
 }
 
