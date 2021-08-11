@@ -33,23 +33,14 @@ fn eval(expr: LExpr) -> LExpr {
       panic!("Not implemented")
     }
     LThunkRef(shared_expr) => {
-      let ref_thunk: &LThunk = &shared_expr.borrow();
-      match ref_thunk {
-        LThunkEvaled(expr) => {
-          return expr.clone()
-        },
-        LThunkEvaling() => {
-          panic!("Evaling thunk that is already being evaled (possibly a circular reference)");
-        },
-        LThunkUnEvaled(_) => {
-          // continue, evaluating the thunk
-        }
-      }
-
       let thunk: LThunk = shared_expr.replace(LThunkEvaling());
       match thunk {
-        LThunkEvaling() => panic!("Expecting un-evaluated thunk"),
-        LThunkEvaled(_) => panic!("Expecting un-evaluated thunk"),
+        LThunkEvaling() => panic!("Attempting to evaluate thunk undergoing evaluation!"),
+        LThunkEvaled(expr) => {
+          let clone_expr = expr.clone();
+          shared_expr.replace(LThunkEvaled(expr));
+          clone_expr
+        },
         LThunkUnEvaled(expr) => {
           let evaled_expr = eval(expr);
           shared_expr.replace(LThunkEvaled(evaled_expr.clone()));
