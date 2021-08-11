@@ -33,20 +33,24 @@ fn eval(expr: LExpr) -> LExpr {
       panic!("Not implemented")
     }
     LThunkRef(shared_expr) => {
-      let thunk: LThunk = shared_expr.replace(LThunkEvaling());
-      match thunk {
-        LThunkEvaling() => panic!("Attempting to evaluate thunk undergoing evaluation!"),
-        LThunkEvaled(expr) => {
-          let clone_expr = expr.clone();
-          shared_expr.replace(LThunkEvaled(expr));
-          clone_expr
-        },
-        LThunkUnEvaled(expr) => {
-          let evaled_expr = eval(expr);
-          shared_expr.replace(LThunkEvaled(evaled_expr.clone()));
-          evaled_expr
-        }
-      }
+      eval_thunk(shared_expr)
+    }
+  }
+}
+
+fn eval_thunk(thunk_ref: Rc<RefCell<LThunk>>) -> LExpr {
+  let thunk: LThunk = thunk_ref.replace(LThunkEvaling()); // TODO - this is basically a poor man's mutex, likely a candidate for better borrowing practices
+  match thunk {
+    LThunkEvaling() => panic!("Attempting to evaluate thunk undergoing evaluation!"),
+    LThunkEvaled(expr) => {
+      let clone_expr = expr.clone();
+      thunk_ref.replace(LThunkEvaled(expr));
+      clone_expr
+    },
+    LThunkUnEvaled(expr) => {
+      let evaled_expr = eval(expr);
+      thunk_ref.replace(LThunkEvaled(evaled_expr.clone()));
+      evaled_expr
     }
   }
 }
