@@ -55,47 +55,61 @@ fn eval_thunk(thunk_ref: Rc<RefCell<LThunk>>) -> LExpr {
 
 fn eval_app(cur_expr: LExpr,
             app_spine: &mut Vec<LExpr>) -> LExpr {
-  match cur_expr {
+  // get result of attempting to apply left expression
+  let res = match cur_expr {
     LNat(_) => panic!("Cannot apply number: {}", cur_expr),
     LChar(_) => panic!("Cannot apply char: {}", cur_expr),
     LBool(_) => panic!("Cannot apply bool: {}", cur_expr),
     LVar(var) => panic!("Free variable encountered: {}", var),
-    LFun(fun) => {
-      return match fun {
-        LFPlus() => {
-          let arg1 = app_spine.pop().expect("+ missing first argument");
-          let arg2 = app_spine.pop().expect("+ missing second argument");
 
-          builtin_plus(arg1, arg2)
-        },
-        LFIf() => {
-          let cond = app_spine.pop().expect("IF missing condition");
-          let true_val = app_spine.pop().expect("IF missing true clause");
-          let false_val = app_spine.pop().expect("IF missing false clause");
+    // builtin functions
+    LFun(LFPlus()) => {
+      let arg1 = app_spine.pop().expect("+ missing first argument");
+      let arg2 = app_spine.pop().expect("+ missing second argument");
 
-          builtin_if(cond, true_val, false_val)
-        }
-      }
+      builtin_plus(arg1, arg2)
     }
+    LFun(LFIf()) => {
+      let cond = app_spine.pop().expect("IF missing condition");
+      let true_val = app_spine.pop().expect("IF missing true clause");
+      let false_val = app_spine.pop().expect("IF missing false clause");
+
+      builtin_if(cond, true_val, false_val)
+    }
+
+    // further application
     LApp(e1, e2) => {
       app_spine.push(*e2);
       eval_app(*e1, app_spine)
     }
+
+    // lambda application
     LLambda(l_var, l_body) => {
       let subst_val = app_spine.pop().expect(format!("lambda: missing value: l_var='{}'", l_var).as_str());
       let subst_ref = Rc::from(RefCell::from(LThunkUnEvaled(subst_val)));
 
       instantiate_lambda(&l_var, &l_body, subst_ref)
     }
+
+    // let constructs
     LLet(_, _) => {
       panic!("Not implemented")
     }
     LLrec(_, _) => {
       panic!("Not implemented")
     }
+
+    // for thunk, simply return evaluated state
     LThunkRef(_) => {
-      panic!("Not implemented")
+      eval(cur_expr)
     }
+  };
+
+  // continue eval if there are still arguments on the app spine
+  if !app_spine.is_empty() {
+    eval_app(res, app_spine)
+  } else {
+    res
   }
 }
 

@@ -1,4 +1,3 @@
-# EXCLUDE
 # (\x. (\x. x)) 1 2
 NAT 2
 NAT 1
