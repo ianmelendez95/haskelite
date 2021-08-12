@@ -23,9 +23,7 @@ fn eval(expr: LExpr) -> LExpr {
       app_spine.push(*e2);
       eval(eval_app(*e1, &mut app_spine))
     }
-    LLambda(_, _) => {
-      panic!("Not implemented")
-    }
+    LLambda(_, _) => expr,
     LLet(_, _) => {
       panic!("Not implemented")
     }

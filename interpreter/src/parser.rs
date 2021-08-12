@@ -7,6 +7,11 @@ pub fn parse_stack_code(input: &str) -> LExpr {
   let mut stack: Vec<LExpr> = Vec::new();
 
   for line in input.lines() {
+    if line.starts_with("#") {
+      // ignore comments
+      continue
+    }
+
     let opcode = &line[0..3];
     let opand = &line[3..].trim();
     match opcode {
