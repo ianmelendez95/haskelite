@@ -1,6 +1,7 @@
 import os
 import subprocess
 import difflib
+import sys
 
 
 # ENVIRONMENT SETUP
@@ -52,30 +53,64 @@ def eval_file(s_file):
     return eval_proc.stdout.decode("UTF-8")
 
 
-def exec_test(s_file, out_file):
-    eval_res = eval_file(s_file).splitlines(keepends=True)
+class TestResult (object):
+    PASSED = "PASSED"
+    FAILED = "FAILED"
+    EXCLUDED = "EXCLUDED"
 
-    with open(out_file, 'r') as f:
-        expected_out = f.readlines()
+    def __init__(self, result, msg=''):
+        self.result = result
+        self.msg = msg
 
-    diff = list(difflib.unified_diff(expected_out, eval_res, fromfile=s_file, tofile=out_file, lineterm='\n'))
+    def print(self, test_name):
+        if sys.stdout.isatty():
+            print(self._get_ansi_color_code(), end='')
 
-    if len(diff) != 0:
-        raise TestFailure("Output did not match expected\n{}".format('\n'.join(diff)))
+        print("[{}] {}".format(test_name, self.result))
+        if self.msg:
+            print(self.msg)
+
+        if sys.stdout.isatty():
+            print('\033[0m', end='')  # reset ANSI color
+
+    def _get_ansi_color_code(self):
+        if self.result == TestResult.PASSED:
+            return '\033[0;32m'  # green
+        elif self.result == TestResult.FAILED:
+            return '\033[0;31m'  # red
+        elif self.result == TestResult.EXCLUDED:
+            return '\033[0;33m'  # yellow
 
 
-for n, fs in collect_test_files(os.path.join(TESTSUITE_DIR, "tests/should-succeed")).items():
-    print("[{}] ".format(n), end='')
+def exec_test(file_dict):
+    if "in" not in file_dict:
+        return TestResult(TestResult.FAILED, "missing input file")
+    elif "out" not in file_dict:
+        return TestResult(TestResult.FAILED, "missing output file")
 
-    if "in" not in fs:
-        print("FAILED - missing stack code file")
-    elif "out" not in fs:
-        print("FAILED - missing output file")
+    s_file = file_dict["in"]
+    out_file = file_dict["out"]
+
+    with open(s_file, 'r') as f:
+        if f.readline().startswith("# EXCLUDE"):
+            return TestResult(TestResult.EXCLUDED)
 
     try:
-        exec_test(fs["in"], fs["out"])
-        print("PASSED")
+        eval_res = eval_file(s_file).splitlines(keepends=True)
+
+        with open(out_file, 'r') as f:
+            expected_out = f.readlines()
+
+        diff = list(difflib.unified_diff(expected_out, eval_res, fromfile=s_file, tofile=out_file, lineterm='\n'))
+
+        if len(diff) != 0:
+            return TestResult(TestResult.FAILED, "Output did not match expected\n{}".format('\n'.join(diff)))
+
+        return TestResult(TestResult.PASSED)
     except TestFailure as tf:
-        print("FAILED\n{}".format(tf.msg))
+        return TestResult(TestResult.FAILED, tf.msg)
 
 
+if __name__ == '__main__':
+    for n, fs in collect_test_files(os.path.join(TESTSUITE_DIR, "tests/should-succeed")).items():
+        exec_test(fs).print(n)
