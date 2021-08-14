@@ -3,15 +3,14 @@ use std::fmt::{Formatter, Debug};
 
 use LExpr::*;
 use std::rc::Rc;
-use std::borrow::Borrow;
-use std::cell::{RefCell, Ref};
-use std::ops::DerefMut;
-use std::io::empty;
+use std::cell::{RefCell};
+
+pub type UBInt = u64;  // UnBoxed Int
 
 #[derive(PartialEq,Debug,Clone)]
 pub enum LExpr {
   // constants
-  LNat(u32),
+  LInt(UBInt),
   LChar(char),
   LBool(bool),
 
@@ -42,8 +41,12 @@ pub enum LThunk {
 
 #[derive(PartialEq,Debug,Copy,Clone)]
 pub enum LFun {
-  LFPlus(),
-  LFIf()
+  LFAdd(),
+  LFSub(),
+  LFIf(),
+  LFEq(),
+
+  LFY()  // the glorious Y combinator
 }
 
 #[derive(PartialEq,Debug,Clone)]
@@ -55,7 +58,7 @@ pub struct LBind {
 impl fmt::Display for LExpr {
   fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
     match self {
-      LNat(n) => write!(f, "{}", n),
+      LInt(n) => write!(f, "{}", n),
       LChar(c) => write!(f, "{}", c),
       LBool(b) => write!(f, "{}", b),
       LVar(v) => write!(f, "{}", v),
@@ -88,8 +91,12 @@ impl fmt::Display for LExpr {
 impl fmt::Display for LFun {
   fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
     match self {
-      LFun::LFPlus() => write!(f, "+"),
-      LFun::LFIf() => write!(f, "IF")
+      LFun::LFAdd() => write!(f, "+"),
+      LFun::LFSub() => write!(f, "-"),
+      LFun::LFIf() => write!(f, "IF"),
+      LFun::LFEq() => write!(f, "="),
+
+      LFun::LFY() => write!(f, "Y")
     }
   }
 }

@@ -6,20 +6,20 @@ use crate::syntax::LFun::*;
 pub fn parse_stack_code(input: &str) -> LExpr {
   let mut stack: Vec<LExpr> = Vec::new();
 
-  for line in input.lines() {
-    if line.starts_with("#") {
-      // ignore comments
+  for line in input.lines().map(|l| l.trim()) {
+    if line.is_empty() || line.starts_with("#") {
+      // ignore empty lines and comments
       continue
     }
 
     let opcode = &line[0..3];
-    let opand = &line[3..].trim();
+    let opand = &line[3..].trim_start(); // end should already be trimmed
     match opcode {
       "VAR" => {
         if opand.is_empty() { panic!("VAR (variable) instruction expects var name operand: {}", line) }
         stack.push(LVar(String::from(*opand)))
       },
-      "NAT" => stack.push(LNat(opand.parse::<u32>().unwrap())),
+      "INT" => stack.push(LInt(opand.parse::<UBInt>().unwrap())),
       "CHR" => stack.push(LChar(parse_char_opand(opand))),
       "BOO" => stack.push(match *opand {
         "T" => LBool(true),
@@ -96,8 +96,11 @@ fn parse_char_opand(opand: &str) -> char {
 
 fn parse_builtin_fun(opand: &str) -> syntax::LFun {
   match opand {
-    "+" => LFPlus(),
+    "+"  => LFAdd(),
+    "-"  => LFSub(),
     "IF" => LFIf(),
+    "=" => LFEq(),
+    "Y" => LFY(),
     _ => panic!("Unknown builtin function: {}", opand)
   }
 }

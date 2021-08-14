@@ -5,7 +5,7 @@
 # 5
 VAR X
 LAM X
-NAT 5
+INT 5
 VAR Y
 APP
 LAM Y

@@ -1,11 +1,11 @@
 use super::syntax::*;
 use super::syntax::LExpr::*;
 use super::syntax::LFun::*;
-use std::rc;
 use std::rc::Rc;
-use std::ops::Deref;
-use std::cell::{Ref, RefCell};
+use std::cell::{RefCell};
 use crate::syntax::LThunk::*;
+use std::ops::Add;
+use std::ops::Sub;
 
 pub fn evaluate(expr: LExpr) -> LExpr {
   eval(expr)
@@ -13,7 +13,7 @@ pub fn evaluate(expr: LExpr) -> LExpr {
 
 fn eval(expr: LExpr) -> LExpr {
   match expr {
-    LNat(_) => expr,
+    LInt(_) => expr,
     LChar(_) => expr,
     LBool(_) => expr,
     LVar(var) => panic!("Free variable encountered: {}", var),
@@ -47,6 +47,10 @@ fn eval_thunk(thunk_ref: Rc<RefCell<LThunk>>) -> LExpr {
     },
     LThunkUnEvaled(expr) => {
       let evaled_expr = eval(expr);
+      if let LThunkRef(_) = &evaled_expr {
+        panic!("Evaling expression returned thunk: {}", evaled_expr)
+      }
+
       thunk_ref.replace(LThunkEvaled(evaled_expr.clone()));
       evaled_expr
     }
@@ -57,17 +61,23 @@ fn eval_app(cur_expr: LExpr,
             app_spine: &mut Vec<LExpr>) -> LExpr {
   // get result of attempting to apply left expression
   let res = match cur_expr {
-    LNat(_) => panic!("Cannot apply number: {}", cur_expr),
+    LInt(_) => panic!("Cannot apply number: {}", cur_expr),
     LChar(_) => panic!("Cannot apply char: {}", cur_expr),
     LBool(_) => panic!("Cannot apply bool: {}", cur_expr),
     LVar(var) => panic!("Free variable encountered: {}", var),
 
     // builtin functions
-    LFun(LFPlus()) => {
+    LFun(LFAdd()) => {
       let arg1 = app_spine.pop().expect("+ missing first argument");
       let arg2 = app_spine.pop().expect("+ missing second argument");
 
-      builtin_plus(arg1, arg2)
+      builtin_add(arg1, arg2)
+    }
+    LFun(LFSub()) => {
+      let arg1 = app_spine.pop().expect("- missing first argument");
+      let arg2 = app_spine.pop().expect("- missing second argument");
+
+      builtin_sub(arg1, arg2)
     }
     LFun(LFIf()) => {
       let cond = app_spine.pop().expect("IF missing condition");
@@ -75,6 +85,23 @@ fn eval_app(cur_expr: LExpr,
       let false_val = app_spine.pop().expect("IF missing false clause");
 
       builtin_if(cond, true_val, false_val)
+    }
+    LFun(LFEq()) => {
+      let arg1 = app_spine.pop().expect("- missing first argument");
+      let arg2 = app_spine.pop().expect("- missing second argument");
+
+      builtin_eq(arg1, arg2)
+    }
+    LFun(LFY()) => {
+      let arg = app_spine.pop().expect("Y: missing argument");
+
+      let arg_shared = LThunkRef(Rc::from(RefCell::from(LThunkUnEvaled(arg))));
+
+      // push Y applied to the arg back on the spine, emulating recursion
+      app_spine.push(LApp(Box::from(LFun(LFY())),
+                               Box::from(arg_shared.clone())));
+
+      eval_app(arg_shared, app_spine)
     }
 
     // further application
@@ -122,7 +149,7 @@ fn eval_app(cur_expr: LExpr,
 
 fn instantiate_lambda(l_var: &str, l_expr: &LExpr, subst_val: Rc<RefCell<LThunk>>) -> LExpr {
   match l_expr {
-    LNat(n) => LNat(*n),
+    LInt(n) => LInt(*n),
     LChar(c) => LChar(*c),
     LBool(b) => LBool(*b),
     LFun(f) => LFun(*f),
@@ -199,6 +226,36 @@ fn var_bound_in_bindings(var: &str, bindings: &Vec<LBind>) -> bool {
   bindings.iter().any(| binding | binding.var == var)
 }
 
+fn builtin_add(x: LExpr, y: LExpr) -> LExpr {
+  LInt(builtin_bin_arith(LFAdd().to_string().as_str(),
+                         x,
+                         y,
+                         UBInt::add))
+}
+
+fn builtin_sub(x: LExpr, y: LExpr) -> LExpr {
+  LInt(builtin_bin_arith(LFSub().to_string().as_str(),
+                         x,
+                         y,
+                         UBInt::sub))
+}
+
+fn builtin_bin_arith(name: &str,
+                     arg1: LExpr,
+                     arg2: LExpr,
+                     arith_f: fn(UBInt, UBInt) -> UBInt) -> UBInt {
+  // TODO - such type checking shouldn't be done (compiler type checker ensures we never eval the wrong 'type')
+  match eval(arg1) {
+    LInt(n_x) => {
+      match eval(arg2) {
+        LInt(n_y) => arith_f(n_x, n_y),
+        y_val => panic!("{}: second argument is not a number: {}", name, y_val)
+      }
+    }
+    x_val => panic!("{}: first argument is not a number: {}", name, x_val)
+  }
+}
+
 fn builtin_if(cond: LExpr, true_val: LExpr, false_val: LExpr) -> LExpr {
   match eval(cond) {
     LBool(bool) => {
@@ -208,55 +265,25 @@ fn builtin_if(cond: LExpr, true_val: LExpr, false_val: LExpr) -> LExpr {
   }
 }
 
-fn builtin_plus(x: LExpr, y: LExpr) -> LExpr {
-  match eval(x) {
-    LNat(n_x) => {
-      match eval(y) {
-        LNat(n_y) => LNat(n_x + n_y),
-        y_val => panic!("+: second argument is not a number: {}", y_val)
-      }
-    }
-    x_val => panic!("+: first argument is not a number: {}", x_val)
+fn builtin_eq(x: LExpr, y: LExpr) -> LExpr {
+  let x_eval = eval(x);
+  if ! is_constant_expression(&x_eval) {
+    panic!("=: first argument is not a constant: {}", x_eval)
   }
+
+  let y_eval = eval(y);
+  if ! is_constant_expression(&y_eval) {
+    panic!("=: second argument is not a constant: {}", y_eval)
+  }
+
+  LBool(x_eval == y_eval)
 }
 
-#[cfg(test)]
-mod tests {
-  use super::*;
-
-  #[test]
-  fn test_eval_simple_sum() -> Result<(), String> {
-    let x = LNat(13);
-    let y = LNat(29);
-
-    let plus_x = LApp(Box::from(LFun(LFPlus())),
-                      Box::from(x));
-    let plus_x_y = LApp(Box::from(plus_x),
-                        Box::from(y));
-
-    assert_eq!(LNat(42), evaluate(plus_x_y));
-    Ok(())
-  }
-
-  #[test]
-  fn test_eval_sum_of_sums() -> Result<(), String> {
-    let plus = LFun(LFPlus());
-    let x = LNat(13);
-    let y = LNat(29);
-
-    let plus_x = LApp(Box::from(plus.clone()),
-                      Box::from(x.clone()));
-    let plus_x_y = LApp(Box::from(plus_x.clone()),
-                        Box::from(y.clone()));
-
-    let plus__plus_x_y =
-      LApp(Box::from(plus.clone()),
-           Box::from(plus_x_y.clone()));
-    let plus__plus_x_y__plus_x_y =
-      LApp(Box::from(plus__plus_x_y.clone()),
-           Box::from(plus_x_y.clone()));
-
-    assert_eq!(LNat(84), evaluate(plus__plus_x_y__plus_x_y));
-    Ok(())
+fn is_constant_expression(x: &LExpr) -> bool {
+  match x {
+    LInt(_) => true,
+    LChar(_) => true,
+    LBool(_) => true,
+    _ => false
   }
 }

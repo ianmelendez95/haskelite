@@ -1,5 +1,5 @@
-NAT 0
-NAT 1
+INT 0
+INT 1
 BOO T
 FUN IF
 APP

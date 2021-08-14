@@ -3,7 +3,7 @@
 # (\y. y) [5]
 # [[5]] (in reality it's optimized to just return [5], the [5] is not thunked again)
 # 5
-NAT 5
+INT 5
 VAR X
 LAM X
 APP
