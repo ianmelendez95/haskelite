@@ -4,8 +4,7 @@ use super::syntax::LFun::*;
 use std::rc::Rc;
 use std::cell::{RefCell};
 use crate::syntax::LThunk::*;
-use std::ops::Add;
-use std::ops::Sub;
+use std::ops::{Add, Sub, Mul};
 
 pub fn evaluate(expr: LExpr) -> LExpr {
   eval(expr)
@@ -78,6 +77,12 @@ fn eval_app(cur_expr: LExpr,
       let arg2 = app_spine.pop().expect("- missing second argument");
 
       builtin_sub(arg1, arg2)
+    }
+    LFun(LFMul()) => {
+      let arg1 = app_spine.pop().expect("* missing first argument");
+      let arg2 = app_spine.pop().expect("* missing second argument");
+
+      builtin_mul(arg1, arg2)
     }
     LFun(LFIf()) => {
       let cond = app_spine.pop().expect("IF missing condition");
@@ -238,6 +243,13 @@ fn builtin_sub(x: LExpr, y: LExpr) -> LExpr {
                          x,
                          y,
                          UBInt::sub))
+}
+
+fn builtin_mul(x: LExpr, y: LExpr) -> LExpr {
+  LInt(builtin_bin_arith(LFSub().to_string().as_str(),
+                         x,
+                         y,
+                         UBInt::mul))
 }
 
 fn builtin_bin_arith(name: &str,

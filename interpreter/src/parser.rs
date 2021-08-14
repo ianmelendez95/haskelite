@@ -98,6 +98,7 @@ fn parse_builtin_fun(opand: &str) -> syntax::LFun {
   match opand {
     "+"  => LFAdd(),
     "-"  => LFSub(),
+    "*"  => LFMul(),
     "IF" => LFIf(),
     "=" => LFEq(),
     "Y" => LFY(),

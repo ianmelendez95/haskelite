@@ -43,6 +43,7 @@ pub enum LThunk {
 pub enum LFun {
   LFAdd(),
   LFSub(),
+  LFMul(),
   LFIf(),
   LFEq(),
 
@@ -93,6 +94,7 @@ impl fmt::Display for LFun {
     match self {
       LFun::LFAdd() => write!(f, "+"),
       LFun::LFSub() => write!(f, "-"),
+      LFun::LFMul() => write!(f, "*"),
       LFun::LFIf() => write!(f, "IF"),
       LFun::LFEq() => write!(f, "="),
 
