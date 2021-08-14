@@ -107,8 +107,8 @@ fn eval_app(cur_expr: LExpr,
     }
 
     // for thunk, simply return evaluated state
-    LThunkRef(_) => {
-      eval(cur_expr)
+    LThunkRef(shared_expr) => {
+      eval_thunk(shared_expr)
     }
   };
 
