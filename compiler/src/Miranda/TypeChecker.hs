@@ -1,5 +1,3 @@
-{-# LANGUAGE TupleSections #-}
-
 module Miranda.TypeChecker 
   ( TCState
   , TCError
@@ -217,7 +215,7 @@ tcVariable :: TypeEnv -> S.Variable -> TCState TypeExpr
 tcVariable env v = 
   case Map.lookup v env of 
     Nothing -> error $ 
-                 "Variable not in type environment: " ++ show v 
+                 "Variable not in type environment (likely a free variable): " ++ show v
                    ++ "\nCurrent Environment: \n" ++ show env
     Just scheme -> newSchemeInstance scheme
 
