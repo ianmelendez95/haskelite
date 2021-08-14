@@ -180,6 +180,9 @@ fn instantiate_lambda(l_var: &str, l_expr: &LExpr, subst_val: Rc<RefCell<LThunk>
       }
     }
     LThunkRef(shared_expr) => {
+      // thunks are always an argument to a lambda application,
+      // and thus never have free variables,
+      // and so we can simply copy the reference
       LThunkRef(shared_expr.clone())
     }
   }
