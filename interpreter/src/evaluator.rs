@@ -106,6 +106,7 @@ fn eval_app(cur_expr: LExpr,
       app_spine.push(LApp(Box::from(LFun(LFY())),
                                Box::from(arg_shared.clone())));
 
+      // TODO - avoid going further into the stack (pop out trampoline style or something)
       eval_app(arg_shared, app_spine)
     }
 
