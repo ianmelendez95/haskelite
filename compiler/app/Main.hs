@@ -3,12 +3,22 @@ module Main where
 import System.Environment
 import System.FilePath
 
+import qualified Miranda.Syntax as M
+import Lambda.ToLambda
+import Parse
+import CodeGen.StackCode
+
 main :: IO ()
 main =
   do [m_file] <- getArgs
      let s_file = dropExtension m_file ++ ".s"
-     writeFile s_file "INT 5\n"
-
+     m_content <- readFile m_file
+     case parse m_content :: Either String M.Prog of
+       Left e -> error $ "Error parsing Miranda file: " ++ e
+       Right m_prog ->
+         let l_prog = toLambda m_prog
+             s_code = compileLambda l_prog
+          in writeFile s_file (show s_code)
 
 -- main :: IO ()
 -- main = do args <- getArgs  
