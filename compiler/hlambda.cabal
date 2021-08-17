@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 6a3e23dfaf7fafb06d0e511182aacbc2c37c33431ad74ee106e9937f9174d3f2
+-- hash: 4ea49cbbcffc20c58f3bf8e7c3abe44941ac58aee34bfba86ee28ad6ec711e01
 
 name:           hlambda
 version:        0.1.0.0
@@ -78,6 +78,7 @@ executable hl
   ghc-options: -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
+    , filepath
     , haskeline
     , hlambda
     , mtl

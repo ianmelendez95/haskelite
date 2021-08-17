@@ -1,7 +1,14 @@
 module Main where
 
+import System.Environment
+import System.FilePath
+
 main :: IO ()
-main = putStrLn "Use GHCI, with GhciUtil module"
+main =
+  do [m_file] <- getArgs
+     let s_file = dropExtension m_file ++ ".s"
+     writeFile s_file "INT 5\n"
+
 
 -- main :: IO ()
 -- main = do args <- getArgs  

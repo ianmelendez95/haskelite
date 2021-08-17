@@ -56,7 +56,7 @@ def compile_file(m_file):
 
 
 def eval_file(s_file):
-    eval_proc = subprocess.run(["cargo", "run", "--", s_file],
+    eval_proc = subprocess.run(["cargo", "run", "--quiet", "--", s_file],
                                cwd=INTERPRETER_PROJECT_DIR,
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     if eval_proc.returncode != 0:
