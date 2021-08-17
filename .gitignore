@@ -11,7 +11,7 @@ detailed-info
 massif/
 
 # Testing
-/testsuite/tests/should-succeed/int.s
+/testsuite/tests/should-succeed/*.s
 
 # BEGIN for Rust
 
