@@ -18,7 +18,7 @@ main =
        Right m_prog ->
          let l_prog = toLambda m_prog
              s_code = compileLambda l_prog
-          in writeFile s_file (show s_code)
+          in writeFile s_file (unlines . map show $ s_code)
 
 -- main :: IO ()
 -- main = do args <- getArgs  
