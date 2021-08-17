@@ -21,7 +21,6 @@ module Lambda.Constructor
   , tupleForProduct
   , nTuple
   , fromString
-  , unpackStr
   ) where 
 
 import Data.Maybe (fromMaybe)
@@ -164,13 +163,3 @@ biList :: [Constructor]
 biList =
   [ fromString "NIL",
     fromString "CONS" ]
-
---------------------------------------------------------------------------------
--- lambda functions
-
-unpackStr :: Constructor -> String 
-unpackStr c = unpackStr' (constrType c)
-
-unpackStr' :: ConstructorType -> String
-unpackStr' (Sum (CSum tag ar)) = "UNPACK-SUM-" ++ show tag ++ "-" ++ show ar
-unpackStr' (Product (CProduct ar)) = "UNPACK-PRODUCT-" ++ show ar
