@@ -1,7 +1,7 @@
 module Enriched.TransformSpec where 
 
 import Test.Hspec
-import Lambda.ToLambda
+import Lambda.ToLambda ( ToLambda(toLambda) )
 import qualified Lambda.Syntax as S
 import Lambda.Enriched
 import qualified Lambda.Enriched as E
@@ -9,7 +9,7 @@ import qualified Lambda.Constructor as C
 
 spec :: Spec
 spec = do
-  describe "ConstanTransformations" $ do
+  describe "Constant Transformations" $ do
 
     it "p105: transforms constant lambda expressions" $ do
       let enr = E.Lambda (E.PConstant (S.CNat 0)) (E.Pure (S.mkConstant (S.CNat 1)))
