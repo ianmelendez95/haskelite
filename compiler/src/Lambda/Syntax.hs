@@ -15,6 +15,8 @@ module Lambda.Syntax
   , mkLambda
   , unApply
 
+  , maybeVariable
+
   , showMarked
   , varName
   , mapVarName
@@ -101,6 +103,12 @@ unApply expr = [expr]
 
 mkLambda :: [String] -> Exp -> Exp
 mkLambda vars expr = foldr Lambda expr vars
+
+
+maybeVariable :: Exp -> Maybe Variable 
+maybeVariable (Term (Variable v)) = Just v
+maybeVariable _ = Nothing
+
 
 ----------------
 -- ToConstant --

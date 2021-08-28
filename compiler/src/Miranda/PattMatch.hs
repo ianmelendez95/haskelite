@@ -8,7 +8,7 @@ import qualified Data.Set as Set
 
 import qualified Lambda.Syntax as S
 import qualified Lambda.Enriched as E
-import Lambda.AlphaConv
+import Lambda.AlphaConv ( AlphaConv(unsafeAlphaConv) )
 
 import Lambda.Constructor
 

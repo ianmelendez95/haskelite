@@ -6,12 +6,15 @@ module Lambda.SCCompiler
   , compileSCs) where
 
 import Control.Exception (assert)
+import Data.Maybe (fromMaybe)
+import Data.Either (partitionEithers)
 import qualified Control.Monad.State.Lazy as ST
-
-import qualified Lambda.Syntax as S
+import qualified Data.Map.Lazy as Map
 
 import Debug.Trace
 
+import qualified Lambda.Syntax as S
+import Lambda.AlphaConv (alphaConvertWithMap)
 
 data Prog = Prog [SC] S.Exp
 
@@ -34,6 +37,12 @@ data SCEnv = SCEnv {
 emptySCEnv :: SCEnv 
 emptySCEnv = SCEnv { scenvSCCount = 0, scenvCombs = [] }
 
+scName :: SC -> String
+scName (SC n _ _) = n
+
+scExpr :: SC -> S.Exp
+scExpr (SC _ _ e) = e
+
 newSCName :: SCS String
 newSCName = 
   do ST.modify (\scenv@SCEnv{ scenvSCCount = c } -> scenv{ scenvSCCount = c+1 })
@@ -49,7 +58,11 @@ compileSCs :: S.Exp -> Prog
 compileSCs expr = 
   let (expr', SCEnv{ scenvCombs = scs }) = 
         ST.runState (csc [] expr) emptySCEnv
-   in Prog scs expr'
+   in reduceFullEta $ Prog scs expr'
+
+  
+--------------------------------------------------------------------------------
+-- Phase One - Lambda Lifting
 
 
 csc :: [String] -> S.Exp -> SCS S.Exp
@@ -92,3 +105,53 @@ isSCVar :: String -> Bool
 isSCVar [] = error "Empty variable"
 isSCVar ('$':_) = True
 isSCVar _ = False
+
+
+--------------------------------------------------------------------------------
+-- Phase Two - Eta Reduction
+
+-- | Perform 'full' eta reductions on program
+-- |
+-- | 'full' means eta reduction results in an equivalence of 
+-- | supercombinators
+-- |
+-- | e.g. $1 x y = $2 x y is fully reducible to $1 = $2
+-- | in contrast to an expression like $1 x y = $2 z y
+-- | which only partially reduces to $1 x = $2 z
+reduceFullEta :: Prog -> Prog
+reduceFullEta (Prog scs expr) = 
+  let (rest_scs, equiv_scs) =
+        partitionEithers . map scToEitherNormalSCOrEquivSCs $ scs
+
+      equiv_map :: Map.Map String String
+      equiv_map = foldr insertEquivName Map.empty equiv_scs
+   in Prog rest_scs (alphaConvertWithMap equiv_map expr) 
+  where
+    -- to partition SCs into those that are not (left) and are (right) completely reducible
+    -- where when they are reducible, we simply return the equivalent names
+    scToEitherNormalSCOrEquivSCs :: SC -> Either SC (String, String)
+    scToEitherNormalSCOrEquivSCs sc = 
+      maybe (Left sc) (Right .  (scName sc,)) (mScReduceFullEta sc)
+
+    -- for building up the map from equivalent names 
+    -- identified per SC
+    insertEquivName :: (String, String) -> Map.Map String String -> Map.Map String String
+    insertEquivName (name, equiv_name) equiv_map = 
+      Map.insert name (fromMaybe equiv_name (Map.lookup equiv_name equiv_map)) equiv_map
+
+
+-- | if SC is fully reducible, return
+-- | the equivalent SC name
+-- | 
+-- | e.g. 
+-- |   $1 x y = $2 x y
+-- |     => Just $2
+mScReduceFullEta :: SC -> Maybe String
+mScReduceFullEta sc = 
+  do vars <- traverse S.maybeVariable . S.unApply $ scExpr sc
+     case vars of 
+       [] -> error $ "Supercombinator has empty expression: " ++ show sc
+       (v:vs) -> 
+         if isSCVar v && not (any isSCVar vs)
+           then Just v
+           else Nothing
