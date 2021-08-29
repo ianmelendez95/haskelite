@@ -7,7 +7,7 @@ import qualified Lambda.Syntax as S
 spec :: Spec 
 spec = do 
   describe "Super Combinator Compilation" $ do 
-    it "p225: compiles simple expression" $ do
+    xit "p225: compiles simple expression" $ do
       -- > (\x. (\y. + y x))
       let lam = S.mkApply [
               S.mkLambda ["x", "y"] (S.mkApply [ S.mkFunction S.FMinus, 
@@ -19,7 +19,7 @@ spec = do
 
       print (SC.compileSCs lam)
 
-    it "p225: compiles trinary sc" $ do
+    xit "p225: compiles trinary sc" $ do
       -- (\x. (\y. (\z. + x y z))) 3 4 5
       -- > (\x. (\y. $1 y x))
       -- > (\x. $2 x)
@@ -46,3 +46,92 @@ spec = do
 
       putStrLn "TRINARY"
       print (SC.compileSCs lam)
+
+    it "p234: compiles recursive lets" $ do
+      {-
+      letrec sumInts = \m. letrec count = \n. if (> n m) Nil (Cons n (count (+ n 1)))
+                               in sum (count 1)
+             sum     = \ns. if (= ns Nil) 0 (+ (head ns) (sum (tail ns)))
+      in sumInts 100
+
+      EXPECTED
+
+      $count count m n = IF (> n m) NIL (CONS n (count (+ n 1)))
+      $sum ns = IF (= ns NIL) 0 (+ (head ns) ($sum (tail ns)))
+      $sumInts m = letrec count = $count count m
+                       in $sum (count 1)
+      -------------------------------------------
+      $sumInts 100
+
+      ACTUAL
+
+      $2count n m count = IF (> n m) NIL (CONS n (count (+ n 1)))
+      $3sum ns sum = IF (= ns NIL) 0 (+ (head ns) (sum (tail ns)))
+      $1sumInts m sum = letrec count = $2
+                            in sum (count 1)
+      --------------------------------------------------------------------------------
+      letrec sumInts = $1
+             sum = $3
+      in sumInts 100
+      -}
+      putStrLn "RECURSIVE"
+      print (SC.compileSCs sumInts_prog)
+
+sumInts_prog :: S.Exp 
+sumInts_prog = 
+  S.Letrec 
+    [ ("sumInts", sumInts), ("sum", sum_e)]
+    (S.Apply (S.mkVariable "sumInts") (S.mkConstant (S.CNat 100)))
+  where
+    sumInts = 
+      S.Lambda "m" 
+        (S.Letrec 
+          [ ( "count", 
+              S.Lambda "n"
+               (S.mkApply
+                 [ S.mkFunction S.FIf
+                 , S.mkApply [ S.mkFunction S.FGt
+                             , S.mkVariable "n"
+                             , S.mkVariable "m"
+                             ]
+                 , S.mkConstant S.CNil
+                 , S.mkApply 
+                     [ S.mkFunction S.FCons
+                     , S.mkVariable "n"
+                     , S.Apply 
+                         (S.mkVariable "count")
+                         (S.mkApply 
+                           [ S.mkFunction S.FPlus 
+                           , S.mkVariable "n"
+                           , S.mkConstant (S.CNat 1)
+                           ])
+                     ]
+                 ])
+            )
+          ]
+          (S.Apply 
+            (S.mkVariable "sum")
+            (S.Apply (S.mkVariable "count") (S.mkConstant (S.CNat 1)))))
+
+    sum_e =
+      S.Lambda "ns" $
+          S.mkApply 
+            [ S.mkFunction S.FIf
+            , S.mkApply 
+                [ S.mkFunction S.FEq
+                , S.mkVariable "ns"
+              , S.mkConstant S.CNil
+              ]
+          , S.mkConstant (S.CNat 0)
+          , S.mkApply 
+              [ S.mkFunction S.FPlus
+              , S.Apply 
+                  (S.mkVariable "head")
+                  (S.mkVariable "ns")
+              , S.Apply 
+                  (S.mkVariable "sum")
+                  (S.Apply 
+                    (S.mkVariable "tail")
+                    (S.mkVariable "ns"))
+              ]
+          ]

@@ -8,6 +8,7 @@ module Lambda.SCCompiler
 import Control.Exception (assert)
 import Data.Maybe (fromMaybe)
 import Data.Either (partitionEithers)
+import Data.List (partition)
 import qualified Control.Monad.State.Lazy as ST
 import qualified Data.Map.Lazy as Map
 
@@ -69,7 +70,7 @@ csc :: [String] -> S.Exp -> SCS S.Exp
 csc _ t@(S.Term _) = pure t 
 csc bound_vars (S.Apply e1 e2 ) = S.Apply <$> csc bound_vars e1 <*> csc bound_vars e2
 csc bound_vars (S.Let (var, val) body) = 
-  do val'  <- csc bound_vars val
+  do val'  <- csc bound_vars val  -- var should not be in binding value, so we don't push it onto the bound vars
      body' <- csc (var : bound_vars) body
      pure $ S.Let (var, val') body'
 csc bound_vars (S.Letrec bs e)  = 
@@ -88,17 +89,17 @@ csc bound_vars (S.Lambda var body)   =
      -- Since we have the bound vars in ascending order (bound_vars)
      -- we can just filter that list for our free variables!
      let body_vars = filter (not . isSCVar) $ S.freeVariables' [var] body'
-         sc_free_vars = filter (`elem` body_vars) bound_vars
+         (sc_bound_params, sc_free_params) = partition (`elem` bound_vars) body_vars  
         --  debug = trace (unlines ["body:    " ++ show body_vars, 
         --                          "sc args: " ++ show sc_free_vars]) sc_free_vars
-         sc_vars = var : 
-           assert (length body_vars == length sc_free_vars) sc_free_vars
+         sc_params = sc_free_params ++ [var] ++ sc_bound_params
 
      -- add the supercombinator to the collection
-     pushSC (SC sc_name sc_vars body')
+     pushSC (SC sc_name sc_params body')
 
      -- return the expression that uses the supercombinator
-     pure $ S.mkApply (S.mkVariable sc_name : map S.mkVariable sc_free_vars)
+     -- which is just the supercombinator applied to the params that are free in the context
+     pure $ S.mkApply (S.mkVariable sc_name : map S.mkVariable sc_free_params)
 
 
 isSCVar :: String -> Bool
