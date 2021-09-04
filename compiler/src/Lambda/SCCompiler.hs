@@ -58,6 +58,11 @@ pushSC :: SC -> SCS ()
 pushSC sc = ST.modify (\scenv@SCEnv{ scenvCombs = scs } -> 
   scenv{ scenvCombs = sc : scs })
 
+renameSC :: String -> String -> SCS ()
+renameSC orig_name new_name = 
+  do (SC _ sc_args sc_expr) <- popSCByName orig_name
+     pushSC (SC new_name sc_args sc_expr)
+
 popSCByName :: String -> SCS SC
 popSCByName name = 
   do scs <- ST.gets scenvCombs
@@ -110,9 +115,7 @@ compileTLBind name expr =
      -- then we can safely rename the sc to the name of the let binding.
      -- Otherwise, simply wrap the expression as a new supercombinator
      case expr' of 
-       (S.Term (S.Variable sc_name@('$' : _))) -> 
-         do (SC _ sc_args sc_expr) <- popSCByName sc_name
-            pushSC (SC ('$' : name) sc_args sc_expr)
+       (S.Term (S.Variable sc_name@('$' : _))) -> renameSC sc_name ('$' : name)
        _ -> pushSC (SC ('$' : name) free_vars expr')
 
 
