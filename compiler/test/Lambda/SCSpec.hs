@@ -7,7 +7,7 @@ import qualified Lambda.Syntax as S
 spec :: Spec 
 spec = do 
   describe "Super Combinator Compilation" $ do 
-    xit "p225: compiles simple expression" $ do
+    it "p225: compiles simple expression" $ do
       -- > (\x. (\y. + y x))
       let lam = S.mkApply [
               S.mkLambda ["x", "y"] (S.mkApply [ S.mkFunction S.FMinus, 
@@ -19,7 +19,7 @@ spec = do
 
       print (SC.compileSCs lam)
 
-    xit "p225: compiles trinary sc" $ do
+    it "p225: compiles trinary sc" $ do
       -- (\x. (\y. (\z. + x y z))) 3 4 5
       -- > (\x. (\y. $1 y x))
       -- > (\x. $2 x)
@@ -54,24 +54,33 @@ spec = do
              sum     = \ns. if (= ns Nil) 0 (+ (head ns) (sum (tail ns)))
       in sumInts 100
 
+      POSSIBLE
+
+      $2 m count n = IF (> n m) NIL (CONS n (count (+ n 1)))
+      ---
+      letrec sumInts = \m. letrec count = $2 m count
+                               in sum (count 1)
+             sum     = \ns. if (= ns Nil) 0 (+ (head ns) (sum (tail ns)))
+      in sumInts 100
+
       EXPECTED
 
       $count count m n = IF (> n m) NIL (CONS n (count (+ n 1)))
       $sum ns = IF (= ns NIL) 0 (+ (head ns) ($sum (tail ns)))
       $sumInts m = letrec count = $count count m
-                       in $sum (count 1)
+                   in $sum (count 1)
       -------------------------------------------
       $sumInts 100
 
       ACTUAL
 
-      $2count n m count = IF (> n m) NIL (CONS n (count (+ n 1)))
-      $3sum ns sum = IF (= ns NIL) 0 (+ (head ns) (sum (tail ns)))
-      $1sumInts m sum = letrec count = $2
-                            in sum (count 1)
+      $3sum sum ns = IF (= ns NIL) 0 (+ (head ns) (sum (tail ns)))
+      $1sumInts sum m = letrec count = $2 m count
+                        in sum (count 1)
+      $2count m count n = IF (> n m) NIL (CONS n (count (+ n 1)))
       --------------------------------------------------------------------------------
-      letrec sumInts = $1
-             sum = $3
+      letrec sumInts = $1 sum
+             sum = $3 head sum tail
       in sumInts 100
       -}
       putStrLn "RECURSIVE"
@@ -135,3 +144,22 @@ sumInts_prog =
                     (S.mkVariable "ns"))
               ]
           ]
+
+{-
+letrec sumInts = \m. letrec count = \n. IF (> n m) NIL (CONS n (count (+ n 1)))
+                         in sum (count 1)
+       sum     = \ns. IF (= ns NIL) 0 (+ (HEAD ns) (sum (TAIL ns)))
+in sumInts 100
+
+
+$1 m count n = IF (> n m) NIL (CONS n (count (+ n 1)))
+---
+letrec sumInts = \m. letrec count = $1 m count
+                         in sum (count 1)
+       sum     = \ns. IF (= ns NIL) 0 (+ (HEAD ns) (sum (TAIL ns)))
+in sumInts 100
+
+
+$1 m count n = IF (> n m) NIL (CONS n (count (+ n 1)))
+$m 
+-}
