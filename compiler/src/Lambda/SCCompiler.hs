@@ -250,8 +250,8 @@ joinSuperCombs (NComb out_params in_sc) =
   case joinSuperCombs in_sc of 
     in_sc'@(NComb in_params in_body) -> 
       if null (out_params `intersect` in_params) -- don't have shared parameters
-        then trace "DID" NComb (out_params ++ in_params) in_body
-        else trace "DID NOT" NComb out_params in_sc'
+        then NComb (out_params ++ in_params) in_body
+        else NComb out_params in_sc'
     in_sc' -> NComb out_params in_sc'
    
 
