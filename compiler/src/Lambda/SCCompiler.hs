@@ -143,19 +143,7 @@ compileBinding (bvar, bvalue) =
 -- and the combinator is replaced with an application of said combinator to 
 -- the bound variable
 bindVar :: String -> SuperComb -> SuperComb
-bindVar var l@(Let (bvar, bval) body) = 
-  if var == bvar then l else Let (bvar, bindVar var bval) (bindVar var body)
-bindVar var l@(Letrec binds body) = 
-  if any ((== var) . fst) binds
-    then l
-    else Letrec (map (second (bindVar var)) binds) (bindVar var body)
-bindVar _ t@(Term _) = t
-bindVar var (App e1 e2) = App (bindVar var e1) (bindVar var e2)
-bindVar var c@(NComb c_name c_params c_body) = 
-  -- var is bound in combinator, or var is not free in combinator
-  if (var `elem` c_params) || (var `notElem` collectFreeVars c_params c_body)
-    then c
-    else App (NComb c_name (var : c_params) c_body) (Term (S.Variable var))
+bindVar var = bindVars [var]
 
 -- see: bindVar
 bindVars :: [String] -> SuperComb -> SuperComb
