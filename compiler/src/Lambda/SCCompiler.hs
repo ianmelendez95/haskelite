@@ -78,7 +78,7 @@ newSCName =
 
 compileExpr :: S.Exp -> Prog
 compileExpr expr = 
-  ST.evalState (liftSuperCombs <$> compileExpr' expr) emptySCEnv
+  ST.evalState (liftSuperCombs <$> compileExprM expr) emptySCEnv
      
 {-# DEPRECATED compileSCs "Use compileExpr" #-}
 compileSCs :: S.Exp -> Prog
@@ -89,25 +89,25 @@ compileSCs = compileExpr
 -- Lambda -> SuperComb
 
 
-compileExpr' :: S.Exp -> SCS SuperComb
+compileExprM :: S.Exp -> SCS SuperComb
 
-compileExpr' (S.Let bind body) = 
-  Let <$> compileBinding bind <*> compileExpr' body
+compileExprM (S.Let bind body) = 
+  Let <$> compileBinding bind <*> compileExprM body
 
-compileExpr' (S.Letrec binds body) = 
+compileExprM (S.Letrec binds body) = 
   do let bindVars' = bindVars (map fst binds)
 
      binds' <- mapM ((fmap . fmap) bindVars' . compileBinding) binds
-     body'  <- bindVars' <$> compileExpr' body
+     body'  <- bindVars' <$> compileExprM body
      pure $ Letrec binds' body'
 
-compileExpr' (S.Term t) = pure $ Term t
+compileExprM (S.Term t) = pure $ Term t
 
-compileExpr' (S.Apply e1 e2) = 
-  App <$> compileExpr' e1 <*> compileExpr' e2
+compileExprM (S.Apply e1 e2) = 
+  App <$> compileExprM e1 <*> compileExprM e2
 
-compileExpr' (S.Lambda var body) =
-  do body_sc <- compileExpr' body
+compileExprM (S.Lambda var body) =
+  do body_sc <- compileExprM body
      case body_sc of
        NComb sc_name sc_params sc_body ->
          if var `notElem` sc_params
@@ -129,7 +129,7 @@ compileExpr' (S.Lambda var body) =
 -- for debugging purposes
 compileBinding :: (String, S.Exp) -> SCS (String, SuperComb)
 compileBinding (bvar, bvalue) = 
-  do sc_bvalue <- compileExpr' bvalue
+  do sc_bvalue <- compileExprM bvalue
      let sc_bvalue' = case sc_bvalue of 
                         NComb sc_name sc_params sc_body -> 
                           NComb (sc_name ++ bvar) sc_params sc_body
