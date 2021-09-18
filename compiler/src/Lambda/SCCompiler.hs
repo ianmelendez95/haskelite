@@ -80,7 +80,10 @@ compileExpr :: S.Exp -> Prog
 compileExpr expr = 
   ST.evalState (liftSuperCombs <$> compileExpr' expr) emptySCEnv
      
-     
+{-# DEPRECATED compileSCs "Use compileExpr" #-}
+compileSCs :: S.Exp -> Prog
+compileSCs = compileExpr
+
 
 --------------------------------------------------------------------------------
 -- Lambda -> SuperComb
@@ -234,7 +237,3 @@ liftBindings = mconcat . (map liftBinding)
       let (Prog scs val') = liftSuperCombs val
         in (scs, [(var, val')])
    
-
-compileSCs :: S.Exp -> Prog
-compileSCs = compileExpr
-
