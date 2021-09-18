@@ -181,6 +181,11 @@ showMarked expr = unpack $ renderSimplyDecorated id renderMarked (treeForm $ pre
 instance Show Exp where 
   show = pShow
 
+instance Show Term where
+  show (Constant c) = show c
+  show (Function f) = show f
+  show (Variable v) = show v
+
 instance Show Function where
   show FPlus  = "+"
   show FMinus = "-"

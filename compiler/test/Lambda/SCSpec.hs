@@ -84,7 +84,7 @@ spec = do
       in sumInts 100
       -}
       putStrLn "RECURSIVE"
-      print (SC.compileSCs sumInts_prog)
+      print (SC.compileExpr sumInts_prog)
 
 sumInts_prog :: S.Exp 
 sumInts_prog = 
