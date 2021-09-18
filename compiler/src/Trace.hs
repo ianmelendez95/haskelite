@@ -1,4 +1,7 @@
-module Trace where 
+module Trace 
+  ( traceShows
+  , traceLines
+  ) where 
 
 import Debug.Trace 
 

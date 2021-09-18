@@ -4,6 +4,15 @@ import Test.Hspec
 import qualified Lambda.SCCompiler as SC
 import qualified Lambda.Syntax as S
 
+
+{-
+App (App (NComb "$1" ["x"] (App (NComb "$2" ["x","y"] (App (App (Term -) (Term "y")) 
+                                                           (Term "x"))) 
+                                (Term "x"))) 
+         (Term 3)) 
+    (Term 4)
+-}
+
 spec :: Spec 
 spec = do 
   describe "Super Combinator Compilation" $ do 
@@ -17,7 +26,7 @@ spec = do
               S.mkConstant (S.toConstant (4 :: Int)) 
             ]
 
-      print (SC.compileSCs lam)
+      print (SC.compileExpr lam)
 
     it "p225: compiles trinary sc" $ do
       -- (\x. (\y. (\z. + x y z))) 3 4 5
@@ -45,7 +54,7 @@ spec = do
             ]
 
       putStrLn "TRINARY"
-      print (SC.compileSCs lam)
+      print (SC.compileExpr lam)
 
     it "p234: compiles recursive lets" $ do
       {-

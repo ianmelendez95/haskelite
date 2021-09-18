@@ -9,11 +9,9 @@ module Lambda.SCCompiler
 import Data.List (foldl1', (\\), intersect)
 import Data.Bifunctor (second)
 import qualified Control.Monad.State.Lazy as ST
-
--- import Control.Exception (assert)
--- import Debug.Trace
-
 import qualified Lambda.Syntax as S
+
+import Debug.Trace (trace, traceShowId)
 
 
 data Prog = Prog [SC] S.Exp
@@ -36,7 +34,7 @@ data SuperComb = Let (String, SuperComb) SuperComb
                -- 'n'ary combinator, one that takes arguments
                -- NComb name params free_vars bound_vars body
                -- where 'bound' here means bound by the outer context, not the combinator
-               | NComb String [String] SuperComb
+               | NComb [String] SuperComb
                deriving Show
 
 data SC = SC {
@@ -78,7 +76,7 @@ newSCName =
 
 compileExpr :: S.Exp -> Prog
 compileExpr expr = 
-  ST.evalState (liftSuperCombs <$> compileExprM expr) emptySCEnv
+  liftSuperCombs . traceShowId . joinSuperCombs . traceShowId . exprToSuperComb $ expr
      
 {-# DEPRECATED compileSCs "Use compileExpr" #-}
 compileSCs :: S.Exp -> Prog
@@ -89,52 +87,59 @@ compileSCs = compileExpr
 -- Lambda -> SuperComb
 
 
-compileExprM :: S.Exp -> SCS SuperComb
+-- exprToSuperComb :: S.Exp -> SCS SuperComb
 
-compileExprM (S.Let bind body) = 
-  Let <$> compileBinding bind <*> compileExprM body
+-- exprToSuperComb (S.Let bind body) = 
+--   Let <$> compileBinding bind <*> exprToSuperComb body
 
-compileExprM (S.Letrec binds body) = 
-  do let bindVars' = bindVars (map fst binds)
+-- exprToSuperComb (S.Letrec binds body) = 
+--   do let bindVars' = bindVars (map fst binds)
 
-     binds' <- mapM ((fmap . fmap) bindVars' . compileBinding) binds
-     body'  <- bindVars' <$> compileExprM body
-     pure $ Letrec binds' body'
+--      binds' <- mapM ((fmap . fmap) bindVars' . compileBinding) binds
+--      body'  <- bindVars' <$> exprToSuperComb body
+--      pure $ Letrec binds' body'
 
-compileExprM (S.Term t) = pure $ Term t
+-- exprToSuperComb (S.Term t) = pure $ Term t
 
-compileExprM (S.Apply e1 e2) = 
-  App <$> compileExprM e1 <*> compileExprM e2
+-- exprToSuperComb (S.Apply e1 e2) = 
+--   App <$> exprToSuperComb e1 <*> exprToSuperComb e2
 
-compileExprM (S.Lambda var body) =
-  do body_sc <- compileExprM body
-     case body_sc of
-       NComb sc_name sc_params sc_body ->
-         if var `notElem` sc_params
-           -- join the supercombinator with the lambda var
-           then pure $ NComb sc_name (sc_params ++ [var]) sc_body
-           -- wrap the resulting combinator as usual
-           else newComb var body_sc
-       _ -> newComb var body_sc
-  where
-    newComb :: String -> SuperComb -> SCS SuperComb
-    newComb sc_param sc_body =
-      do sc_name <- newSCName
-         pure $ NComb sc_name [sc_param] (bindVar var sc_body)
+-- exprToSuperComb (S.Lambda var body) =
+--   do sc_name <- newSCName
+--      body_sc <- exprToSuperComb body
+--      pure $ NComb sc_name [var] (bindVar var body_sc)
+
+
+exprToSuperComb :: S.Exp -> SuperComb
+
+exprToSuperComb (S.Let bind body) = 
+  Let (compileBinding bind) (exprToSuperComb body)
+
+exprToSuperComb (S.Letrec binds body) = 
+  let binds' = map (fmap exprToSuperComb) binds
+      body'  = exprToSuperComb body
+   in Letrec binds' body'
+
+exprToSuperComb (S.Term t) = Term t
+
+exprToSuperComb (S.Apply e1 e2) = 
+  App (exprToSuperComb e1) (exprToSuperComb e2)
+
+exprToSuperComb (S.Lambda var body) = NComb [var] (exprToSuperComb body)
 
 
 -- compiles the value as normal, but also 
 -- when value is an nary combinator, 
 -- appends the binding name to the combinator name 
 -- for debugging purposes
-compileBinding :: (String, S.Exp) -> SCS (String, SuperComb)
+compileBinding :: (String, S.Exp) -> (String, SuperComb)
 compileBinding (bvar, bvalue) = 
-  do sc_bvalue <- compileExprM bvalue
-     let sc_bvalue' = case sc_bvalue of 
-                        NComb sc_name sc_params sc_body -> 
-                          NComb (sc_name ++ bvar) sc_params sc_body
+  do let sc_bvalue = exprToSuperComb bvalue
+         sc_bvalue' = case sc_bvalue of 
+                        NComb sc_params sc_body -> 
+                          NComb sc_params sc_body
                         _ -> sc_bvalue
-     pure (bvar, sc_bvalue')
+      in (bvar, sc_bvalue')
 
 -- Establishes a new bound variable in the supercombinator
 -- context.
@@ -161,12 +166,12 @@ bindVars vars l@(Letrec binds body) =
               in Letrec (map (second bindVars') binds) (bindVars' body)
 bindVars _ t@(Term _) = t
 bindVars vars (App e1 e2) = App (bindVars vars e1) (bindVars vars e2)
-bindVars vars c@(NComb c_name c_params c_body) = 
+bindVars vars c@(NComb c_params c_body) = 
   -- free_sc_vars = vars (to be bound) that are free in combinator
   let free_sc_vars = vars `intersect` collectFreeVars c_params c_body
    in if null free_sc_vars
         then c
-        else let sc = NComb c_name (free_sc_vars ++ c_params) c_body 
+        else let sc = NComb (free_sc_vars ++ c_params) c_body 
                  sc_args = map (Term . S.Variable) free_sc_vars
               in mkApp (sc : sc_args)
 
@@ -181,7 +186,7 @@ collectFreeVars bound_vars (Letrec binds body) =
 collectFreeVars bound_vars (Term (S.Variable v)) = [v | v `notElem` bound_vars]
 collectFreeVars _ (Term _) = []
 collectFreeVars bound_vars (App e1 e2) = collectFreeVars bound_vars e1 ++ collectFreeVars bound_vars e2
-collectFreeVars bound_vars (NComb _ params body) = collectFreeVars (params ++ bound_vars) body
+collectFreeVars bound_vars (NComb params body) = collectFreeVars (params ++ bound_vars) body
 
 
 --------------------------------------------------------------------------------
@@ -202,18 +207,18 @@ liftSuperCombs (Letrec binds body) =
 liftSuperCombs (Term t) = Prog [] (S.Term t)
 liftSuperCombs (App sc1 sc2) = 
   appendProgs S.Apply (liftSuperCombs sc1) (liftSuperCombs sc2)
-liftSuperCombs (NComb name params body) = 
+liftSuperCombs (NComb params body) = 
   let (Prog b_scs body') = liftSuperCombs body
       new_sc = SC {
-        scName = name,
+        scName = "TODO GEN NAME",
         scParams = params,
         scBody = body'
       }
-   in Prog (new_sc : b_scs) (S.mkApply . map S.mkVariable $ name : params)
+   in Prog (new_sc : b_scs) (S.mkApply . map S.mkVariable $ "TODO GEN NAME" : params)
 
 
 liftBindings :: [(String, SuperComb)] -> ([SC], [(String, S.Exp)])
-liftBindings = mconcat . (map liftBinding)
+liftBindings = mconcat . map liftBinding
   where
     -- 'lift' the binding, retrieving the supercombinators
     -- and the new binding
@@ -224,4 +229,30 @@ liftBindings = mconcat . (map liftBinding)
     liftBinding (var, val) = 
       let (Prog scs val') = liftSuperCombs val
         in (scs, [(var, val')])
+
+
+-- | Identifies directly nested supercombinators,
+-- | and attempts to join them
+-- |
+-- | e.g.
+-- |   ($ y = ($ x = y))
+-- |   => ($ y x = y)
+-- | 
+-- | This has the consequence of addressing eventual full
+-- | eta reductions as described in 
+-- | section 13.3.1 "Eliminating Redundant Parameters"
+joinSuperCombs :: SuperComb -> SuperComb
+joinSuperCombs (Let (var, val) body) = Let (var, joinSuperCombs val) body
+joinSuperCombs (Letrec binds body) = Letrec (map (joinSuperCombs <$>) binds) body
+joinSuperCombs t@(Term _) = t
+joinSuperCombs (App sc1 sc2) = App (joinSuperCombs sc1) (joinSuperCombs sc2)
+joinSuperCombs (NComb out_params in_sc) = 
+  case joinSuperCombs in_sc of 
+    in_sc'@(NComb in_params in_body) -> 
+      if null (out_params `intersect` in_params) -- don't have shared parameters
+        then trace "DID" NComb (out_params ++ in_params) in_body
+        else trace "DID NOT" NComb out_params in_sc'
+    in_sc' -> NComb out_params in_sc'
    
+
+
