@@ -153,7 +153,7 @@ bindVar _ t@(Term _) = t
 bindVar var (App e1 e2) = App (bindVar var e1) (bindVar var e2)
 bindVar var c@(NComb c_name c_params c_body) = 
   -- var is bound in combinator, or var is not free in combinator
-  if (var `elem` c_params) || (var `notElem` collectFreeVars' c_params c_body)
+  if (var `elem` c_params) || (var `notElem` collectFreeVars c_params c_body)
     then c
     else App (NComb c_name (var : c_params) c_body) (Term (S.Variable var))
 
@@ -175,7 +175,7 @@ bindVars _ t@(Term _) = t
 bindVars vars (App e1 e2) = App (bindVars vars e1) (bindVars vars e2)
 bindVars vars c@(NComb c_name c_params c_body) = 
   -- free_sc_vars = vars (to be bound) that are free in combinator
-  let free_sc_vars = vars `intersect` collectFreeVars' c_params c_body
+  let free_sc_vars = vars `intersect` collectFreeVars c_params c_body
    in if null free_sc_vars
         then c
         else let sc = NComb c_name (free_sc_vars ++ c_params) c_body 
@@ -183,17 +183,17 @@ bindVars vars c@(NComb c_name c_params c_body) =
               in mkApp (sc : sc_args)
 
 
-collectFreeVars' :: [String] -> SuperComb -> [String]
-collectFreeVars' bound_vars (Let (bvar, bvalue) body) =
+collectFreeVars :: [String] -> SuperComb -> [String]
+collectFreeVars bound_vars (Let (bvar, bvalue) body) =
   let bound_vars' = bvar : bound_vars
-   in collectFreeVars' bound_vars' bvalue ++ collectFreeVars' bound_vars' body
-collectFreeVars' bound_vars (Letrec binds body) =
+   in collectFreeVars bound_vars' bvalue ++ collectFreeVars bound_vars' body
+collectFreeVars bound_vars (Letrec binds body) =
   let bound_vars' = map fst binds ++ bound_vars
-   in concatMap (collectFreeVars' bound_vars' . snd) binds ++ collectFreeVars' bound_vars' body
-collectFreeVars' bound_vars (Term (S.Variable v)) = [v | v `notElem` bound_vars]
-collectFreeVars' _ (Term _) = []
-collectFreeVars' bound_vars (App e1 e2) = collectFreeVars' bound_vars e1 ++ collectFreeVars' bound_vars e2
-collectFreeVars' bound_vars (NComb _ params body) = collectFreeVars' (params ++ bound_vars) body
+   in concatMap (collectFreeVars bound_vars' . snd) binds ++ collectFreeVars bound_vars' body
+collectFreeVars bound_vars (Term (S.Variable v)) = [v | v `notElem` bound_vars]
+collectFreeVars _ (Term _) = []
+collectFreeVars bound_vars (App e1 e2) = collectFreeVars bound_vars e1 ++ collectFreeVars bound_vars e2
+collectFreeVars bound_vars (NComb _ params body) = collectFreeVars (params ++ bound_vars) body
 
 
 --------------------------------------------------------------------------------
