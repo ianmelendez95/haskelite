@@ -4,15 +4,15 @@ module Lambda.SCCompiler
   ( Prog (..)
   , SC (..)
   , compileExpr
-  , compileSCs) where
+  ) where
 
 import Data.List (foldl1', (\\), intersect, union)
-import Data.Bifunctor (second)
 import qualified Control.Monad.State.Lazy as ST
 import qualified Lambda.Syntax as S
 
-import Debug.Trace (trace, traceShowId)
-import Trace (traceMsg)
+-- import Trace (traceMsg)
+traceMsg :: String -> a -> a
+traceMsg _ x = x
 
 
 data Prog = Prog [SC] S.Exp
@@ -82,10 +82,6 @@ compileExpr =
   . traceMsg "INIT:      " . exprToSuperComb
   . traceMsg "EXPR:      "
      
-{-# DEPRECATED compileSCs "Use compileExpr" #-}
-compileSCs :: S.Exp -> Prog
-compileSCs = compileExpr
-
 
 --------------------------------------------------------------------------------
 -- Lambda -> SuperComb
@@ -178,10 +174,24 @@ liftSuperCombs (Let (bvar, bval) body) =
   appendProgs (\bval' body' -> S.Let (bvar, bval') body') 
               (liftSuperCombs bval) 
               (liftSuperCombs body)
+
 liftSuperCombs (Letrec binds body) = 
   let (binds_scs, binds') = liftBindings binds
       (Prog body_scs body') = liftSuperCombs body
    in Prog (binds_scs ++ body_scs) (S.Letrec binds' body')
+  where
+    liftBindings :: [(String, SuperComb)] -> ([SC], [(String, S.Exp)])
+    liftBindings = mconcat . map liftBinding
+
+    -- 'lift' the binding, retrieving the supercombinators
+    -- and the new binding
+    --
+    -- returns the binding as a singleton list so it can be 
+    -- simply concatenated
+    liftBinding :: (String, SuperComb) -> ([SC], [(String, S.Exp)])
+    liftBinding (var, val) = 
+      let (Prog scs val') = liftSuperCombs val
+        in (scs, [(var, val')])
   
 -- TODO: consider renaming free vars that match named supercombs
 liftSuperCombs (Term t) = Prog [] (S.Term t)
@@ -195,20 +205,6 @@ liftSuperCombs (NComb bound_ps free_ps body) =
         scBody = body'
       }
    in Prog (new_sc : b_scs) (S.mkApply . map S.mkVariable $ "TODO GEN NAME" : free_ps)
-
-
-liftBindings :: [(String, SuperComb)] -> ([SC], [(String, S.Exp)])
-liftBindings = mconcat . map liftBinding
-  where
-    -- 'lift' the binding, retrieving the supercombinators
-    -- and the new binding
-    --
-    -- returns the binding as a singleton list so it can be 
-    -- simply concatenated
-    liftBinding :: (String, SuperComb) -> ([SC], [(String, S.Exp)])
-    liftBinding (var, val) = 
-      let (Prog scs val') = liftSuperCombs val
-        in (scs, [(var, val')])
 
 
 -- | Identifies directly nested supercombinators,
