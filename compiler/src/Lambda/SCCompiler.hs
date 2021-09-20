@@ -15,6 +15,10 @@ traceMsg :: String -> a -> a
 traceMsg _ x = x
 
 
+--------------------------------------------------------------------------------
+-- Final Program Structure
+
+
 data Prog = Prog [SC] S.Exp
 
 instance Show Prog where
@@ -31,6 +35,10 @@ instance Show SC where
   show (SC name args expr) = unwords (name : args) ++ " = " ++ show expr
 
 
+--------------------------------------------------------------------------------
+-- Supercombinator Expression
+
+
 data SuperComb = Let (String, SuperComb) SuperComb
                | Letrec [(String, SuperComb)] SuperComb
                | Term S.Term
@@ -40,6 +48,10 @@ data SuperComb = Let (String, SuperComb) SuperComb
                -- NComb bound_params free_params body
                | NComb [String] [String] SuperComb
                deriving Show
+
+
+--------------------------------------------------------------------------------
+-- Supercombinator State
 
 
 type SCS = ST.State SCEnv
@@ -72,9 +84,6 @@ emptySCEnv :: SCEnv
 emptySCEnv = SCEnv { scenvSCCount = 0, scenvCombs = [] }
 
 
-type Bind a = (String, a)
-
-
 --------------------------------------------------------------------------------
 -- Interface
 
@@ -89,7 +98,7 @@ compileExpr =
      
 
 --------------------------------------------------------------------------------
--- Lambda -> SuperComb
+-- Lambda -> Raw SuperComb
 
 
 exprToSuperComb :: S.Exp -> SuperComb
@@ -108,6 +117,40 @@ exprToSuperComb (S.Apply e1 e2) =
   App (exprToSuperComb e1) (exprToSuperComb e2)
 
 exprToSuperComb (S.Lambda var body) = NComb [var] [] (exprToSuperComb body)
+
+
+--------------------------------------------------------------------------------
+-- Join Supercombinators
+
+
+-- | Identifies directly nested supercombinators,
+-- | and attempts to join them
+-- |
+-- | e.g.
+-- |   ($ y = ($ x = y))
+-- |   => ($ y x = y)
+-- | 
+-- | This has the consequence of addressing eventual full
+-- | eta reductions as described in 
+-- | section 13.3.1 "Eliminating Redundant Parameters"
+joinSuperCombs :: SuperComb -> SuperComb
+joinSuperCombs (Let (var, val) body) = Let (var, joinSuperCombs val) body
+joinSuperCombs (Letrec binds body) = Letrec (map (joinSuperCombs <$>) binds) body
+joinSuperCombs t@(Term _) = t
+joinSuperCombs (App sc1 sc2) = App (joinSuperCombs sc1) (joinSuperCombs sc2)
+joinSuperCombs (NComb out_bound_ps out_free_ps in_sc) = 
+  case joinSuperCombs in_sc of 
+    in_sc'@(NComb in_bound_ps in_free_ps in_body) -> 
+      if null (out_bound_ps `intersect` in_bound_ps) -- don't have shared parameters
+        then let bound_ps = out_bound_ps ++ in_bound_ps
+                 free_ps = (out_free_ps `union` in_free_ps) \\ bound_ps
+              in NComb bound_ps free_ps in_body
+        else NComb out_bound_ps out_free_ps in_sc'
+    in_sc' -> NComb out_bound_ps out_free_ps in_sc'
+
+
+--------------------------------------------------------------------------------
+-- Resolve Free Parameters
 
 
 -- | free parameter context,
@@ -171,7 +214,14 @@ resolveFreeParams bound (NComb bound_ps free_ps body) =
 
 
 --------------------------------------------------------------------------------
+-- Lift the Supercombinators out of the lambda expression,
+-- forming the complete program
 -- SuperComb -> Lambda
+
+
+-- | Bind type used as a visual aid
+-- | for treating it as a foldable, applicative container
+type Bind a = (String, a)
 
 
 liftSuperCombs :: SuperComb -> Prog
@@ -205,32 +255,6 @@ liftSuperCombsM (NComb bound_ps free_ps body) =
        scBody = body'
      }
      pure $ S.mkApply (map S.mkVariable (sc_name : free_ps))
-
-
--- | Identifies directly nested supercombinators,
--- | and attempts to join them
--- |
--- | e.g.
--- |   ($ y = ($ x = y))
--- |   => ($ y x = y)
--- | 
--- | This has the consequence of addressing eventual full
--- | eta reductions as described in 
--- | section 13.3.1 "Eliminating Redundant Parameters"
-joinSuperCombs :: SuperComb -> SuperComb
-joinSuperCombs (Let (var, val) body) = Let (var, joinSuperCombs val) body
-joinSuperCombs (Letrec binds body) = Letrec (map (joinSuperCombs <$>) binds) body
-joinSuperCombs t@(Term _) = t
-joinSuperCombs (App sc1 sc2) = App (joinSuperCombs sc1) (joinSuperCombs sc2)
-joinSuperCombs (NComb out_bound_ps out_free_ps in_sc) = 
-  case joinSuperCombs in_sc of 
-    in_sc'@(NComb in_bound_ps in_free_ps in_body) -> 
-      if null (out_bound_ps `intersect` in_bound_ps) -- don't have shared parameters
-        then let bound_ps = out_bound_ps ++ in_bound_ps
-                 free_ps = (out_free_ps `union` in_free_ps) \\ bound_ps
-              in NComb bound_ps free_ps in_body
-        else NComb out_bound_ps out_free_ps in_sc'
-    in_sc' -> NComb out_bound_ps out_free_ps in_sc'
    
 
 
