@@ -7,12 +7,15 @@ module Lambda.SCCompiler
   ) where
 
 import Data.List ((\\), intersect, union)
+import Data.Maybe (fromMaybe)
 import qualified Control.Monad.State.Lazy as ST
 import qualified Lambda.Syntax as S
 
 -- import Trace (traceMsg)
 traceMsg :: String -> a -> a
 traceMsg _ x = x
+-- traceMsg :: String -> a -> a
+-- traceMsg _ x = x
 
 
 --------------------------------------------------------------------------------
@@ -139,14 +142,17 @@ joinSuperCombs (Letrec binds body) = Letrec (map (joinSuperCombs <$>) binds) bod
 joinSuperCombs t@(Term _) = t
 joinSuperCombs (App sc1 sc2) = App (joinSuperCombs sc1) (joinSuperCombs sc2)
 joinSuperCombs (NComb out_bound_ps out_free_ps in_sc) = 
-  case joinSuperCombs in_sc of 
-    in_sc'@(NComb in_bound_ps in_free_ps in_body) -> 
-      if null (out_bound_ps `intersect` in_bound_ps) -- don't have shared parameters
-        then let bound_ps = out_bound_ps ++ in_bound_ps
-                 free_ps = (out_free_ps `union` in_free_ps) \\ bound_ps
-              in NComb bound_ps free_ps in_body
-        else NComb out_bound_ps out_free_ps in_sc'
-    in_sc' -> NComb out_bound_ps out_free_ps in_sc'
+  let in_sc' = joinSuperCombs in_sc
+      m_joined = 
+        case in_sc' of 
+          (NComb in_bound_ps in_free_ps in_body) -> 
+            if null (out_bound_ps `intersect` in_bound_ps) -- don't have shared parameters
+              then let bound_ps = out_bound_ps ++ in_bound_ps
+                       free_ps = (out_free_ps `union` in_free_ps) \\ bound_ps
+                    in Just $ NComb bound_ps free_ps in_body
+              else Nothing
+          _ -> Nothing
+   in fromMaybe (NComb out_bound_ps out_free_ps in_sc') m_joined
 
 
 --------------------------------------------------------------------------------
