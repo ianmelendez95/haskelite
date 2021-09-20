@@ -6,7 +6,7 @@ module Lambda.SCCompiler
   , compileExpr
   ) where
 
-import Data.List ((\\), intersect, union)
+import Data.List (intersect, union)
 import Data.Maybe (fromMaybe)
 import qualified Control.Monad.State.Lazy as ST
 import qualified Lambda.Syntax as S
@@ -263,4 +263,15 @@ liftSuperCombsM (NComb bound_ps free_ps body) =
      pure $ S.mkApply (map S.mkVariable (sc_name : free_ps))
    
 
+--------------------------------------------------------------------------------
+-- Common Util
 
+
+-- | override default \\ implementation, as it 
+-- | only removes the first matching occurrence
+(\\) :: Eq a => [a] -> [a] -> [a]
+(\\) = foldl deleteAll
+  where
+    deleteAll :: Eq a => [a] -> a -> [a]
+    deleteAll [] _ = []
+    deleteAll (y':ys') x' = if x' == y' then deleteAll ys' x' else y' : deleteAll ys' x'

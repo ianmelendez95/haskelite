@@ -63,14 +63,6 @@ spec = do
              sum     = \ns. if (= ns Nil) 0 (+ (head ns) (sum (tail ns)))
       in sumInts 100
 
-      POSSIBLE
-
-      $2 m count n = IF (> n m) NIL (CONS n (count (+ n 1)))
-      ---
-      letrec sumInts = \m. letrec count = $2 m count
-                               in sum (count 1)
-             sum     = \ns. if (= ns Nil) 0 (+ (head ns) (sum (tail ns)))
-      in sumInts 100
 
       EXPECTED
 
@@ -81,16 +73,6 @@ spec = do
       -------------------------------------------
       $sumInts 100
 
-      ACTUAL
-
-      $3sum sum ns = IF (= ns NIL) 0 (+ (head ns) (sum (tail ns)))
-      $1sumInts sum m = letrec count = $2 m count
-                        in sum (count 1)
-      $2count m count n = IF (> n m) NIL (CONS n (count (+ n 1)))
-      --------------------------------------------------------------------------------
-      letrec sumInts = $1 sum
-             sum = $3 head sum tail
-      in sumInts 100
       -}
       putStrLn "RECURSIVE"
       print (SC.compileExpr sumInts_prog)
