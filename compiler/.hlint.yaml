@@ -32,10 +32,10 @@
 #
 # - functions:
 #   - {name: unsafePerformIO, within: [], message: "Use Set functions instead"} # unsafePerformIO can only appear in no modules
-# - functions:
-#   - { name: \\
-#     , within: [SCCompiler]  # overridden in these modules
-#     } 
+- functions:
+  - { name: \\
+    , within: [SCCompiler]  # overridden in these modules
+    } 
 
 
 # Add custom hints for this project
