@@ -257,7 +257,7 @@ liftSuperCombsM (NComb bound_ps free_ps body) =
      body'   <- liftSuperCombsM body
      pushSC $ SC{
        scName = sc_name,
-       scParams = bound_ps ++ free_ps,
+       scParams = free_ps ++ bound_ps,
        scBody = body'
      }
      pure $ S.mkApply (map S.mkVariable (sc_name : free_ps))
