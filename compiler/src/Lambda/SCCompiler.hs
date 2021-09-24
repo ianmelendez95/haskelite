@@ -64,37 +64,18 @@ newName = ('$':) . show <$> (ST.modify (+1) >> ST.get)
 
 
 --------------------------------------------------------------------------------
--- Supercombinator State
+-- Supercombinator Lifting/Collection
 
 
-type SCS = ST.State SCEnv
+type SCS = ST.State [SC]
 
 scsToProg :: SCS S.Exp -> Prog
 scsToProg scstate = 
-  let (body, SCEnv{ scenvCombs = scs }) = ST.runState scstate emptySCEnv
+  let (body, scs) = ST.runState scstate []
    in Prog scs body
 
-newSCName :: SCS String
-newSCName = ('$':) . show <$> new_count
-  where 
-    new_count = 
-      do ST.modify (\scenv@SCEnv{ scenvSCCount = c } -> scenv{ scenvSCCount = c+1 })
-         ST.gets scenvSCCount
-
 pushSC :: SC -> SCS ()
-pushSC sc = ST.modify (scenvPushSC sc)
-
-
-data SCEnv = SCEnv {
-  scenvSCCount :: Integer,
-  scenvCombs :: [SC]
-}
-
-scenvPushSC :: SC -> SCEnv -> SCEnv
-scenvPushSC sc scenv@SCEnv{ scenvCombs = scs } = scenv{ scenvCombs = sc : scs }
-
-emptySCEnv :: SCEnv
-emptySCEnv = SCEnv { scenvSCCount = 0, scenvCombs = [] }
+pushSC sc = ST.modify (sc :)
 
 
 --------------------------------------------------------------------------------
