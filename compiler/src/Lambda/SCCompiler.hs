@@ -86,7 +86,7 @@ pushSC sc = ST.modify (sc :)
 compileExpr :: S.Exp -> Prog
 compileExpr = 
   liftSuperCombs 
-  . traceMsg "PARAM RES: " . snd . resolveFreeParams []
+  . traceMsg "PARAM RES: " . resolveFreeParams
   . traceMsg "NAMED:     " . nameCombs
   . traceMsg "JOINED:    " . joinSuperCombs 
   . traceMsg "INIT:      " . exprToSuperComb
@@ -163,28 +163,24 @@ joinSuperCombs (NComb out_name out_bound_ps out_free_ps in_sc) =
 type FPCtx a = ([String], a)
 
 
--- | resolves the free parameters in the expression,
--- | adding them to relevant combinator's parameter lists
--- |
--- | NOTE: a free parameter is a free variable that is also
--- |       bound in the outer context
--- |
--- | bound_vars -> naive_comb -> resolved_comb
-resolveFreeParams :: [String] -> SuperComb -> FPCtx SuperComb
+-- | Delegate to resolveFreeParamsM, but
+-- | top level lets are treated specially, 
+-- | where their associated variables are free
+resolveFreeParams :: SuperComb -> SuperComb
 
-resolveFreeParams bound (Let (var, val) body) = 
-  first (`deleteAll` var) $ Let <$> ((var,) <$> resolve val) <*> resolve body
+resolveFreeParams (Let (var, val) body) = 
+  snd $ Let <$> ((var,) <$> resolve val) <*> resolve body
   where 
-    resolve = resolveFreeParams (var : bound)
+    resolve = resolveFreeParamsM []
 
-resolveFreeParams bound (Letrec binds body) = 
+resolveFreeParams (Letrec binds body) =
   let resolved_binds :: FPCtx [(String, SuperComb)]
       resolved_binds = foldMap resolveBind binds
 
-   in first (\\ map fst binds) $ Letrec <$> resolved_binds <*> resolve body
+   in snd $ Letrec <$> resolved_binds <*> resolve body
   where 
     resolve :: SuperComb -> FPCtx SuperComb
-    resolve = resolveFreeParams (map fst binds ++ bound)
+    resolve = resolveFreeParamsM []
 
     -- resolves the binding, returned as a singleton
     -- within the FPCtx so that the result can be folded 
@@ -192,19 +188,51 @@ resolveFreeParams bound (Letrec binds body) =
     resolveBind :: (String, SuperComb) -> FPCtx [(String, SuperComb)]
     resolveBind (var, val) = (:[]) . (var,) <$> resolve val
 
-resolveFreeParams bound t@(Term (S.Variable v)) = 
+resolveFreeParams sc = snd $ resolveFreeParamsM [] sc
+
+
+-- | resolves the free parameters in the expression,
+-- | adding them to relevant combinator's parameter lists
+-- |
+-- | NOTE: a free parameter is a free variable that is also
+-- |       bound in the outer context
+-- |
+-- | bound_vars -> naive_comb -> resolved_comb
+resolveFreeParamsM :: [String] -> SuperComb -> FPCtx SuperComb
+
+resolveFreeParamsM bound (Let (var, val) body) = 
+  first (`deleteAll` var) $ Let <$> ((var,) <$> resolve val) <*> resolve body
+  where 
+    resolve = resolveFreeParamsM (var : bound)
+
+resolveFreeParamsM bound (Letrec binds body) = 
+  let resolved_binds :: FPCtx [(String, SuperComb)]
+      resolved_binds = foldMap resolveBind binds
+
+   in first (\\ map fst binds) $ Letrec <$> resolved_binds <*> resolve body
+  where 
+    resolve :: SuperComb -> FPCtx SuperComb
+    resolve = resolveFreeParamsM (map fst binds ++ bound)
+
+    -- resolves the binding, returned as a singleton
+    -- within the FPCtx so that the result can be folded 
+    -- with other resolved binding results
+    resolveBind :: (String, SuperComb) -> FPCtx [(String, SuperComb)]
+    resolveBind (var, val) = (:[]) . (var,) <$> resolve val
+
+resolveFreeParamsM bound t@(Term (S.Variable v)) = 
   if v `elem` bound then ([v], t) else ([], t)
 
-resolveFreeParams _ t@(Term _) = pure t
+resolveFreeParamsM _ t@(Term _) = pure t
 
-resolveFreeParams bound (App sc1 sc2) = 
-  App <$> resolveFreeParams bound sc1 <*> resolveFreeParams bound sc2
+resolveFreeParamsM bound (App sc1 sc2) = 
+  App <$> resolveFreeParamsM bound sc1 <*> resolveFreeParamsM bound sc2
 
-resolveFreeParams bound (NComb name bound_ps free_ps body) = 
+resolveFreeParamsM bound (NComb name bound_ps free_ps body) = 
   -- this is where the FPCtx is interesting, 
   -- since the free params in the body become params
   -- of the combinator
-  let (body_free_vars, body') = resolveFreeParams (bound_ps `union` bound) body
+  let (body_free_vars, body') = resolveFreeParamsM (bound_ps `union` bound) body
 
       -- the free vars for the enclosing contexts,
       -- and thus the free vars of this supercombinator
