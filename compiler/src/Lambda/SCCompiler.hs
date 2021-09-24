@@ -85,8 +85,8 @@ pushSC sc = ST.modify (sc :)
 compileExpr :: S.Exp -> Prog
 compileExpr = 
   liftSuperCombs 
-  . traceMsg "NAMED:     " . nameCombs
   . traceMsg "PARAM RES: " . snd . resolveFreeParams []
+  . traceMsg "NAMED:     " . nameCombs
   . traceMsg "JOINED:    " . joinSuperCombs 
   . traceMsg "INIT:      " . exprToSuperComb
   . traceMsg "EXPR:      "
