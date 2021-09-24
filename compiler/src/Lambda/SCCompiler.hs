@@ -49,8 +49,18 @@ data SuperComb = Let (String, SuperComb) SuperComb
 
                -- 'n'ary combinator, one that takes arguments
                -- NComb bound_params free_params body
-               | NComb [String] [String] SuperComb
+               | NComb String [String] [String] SuperComb
                deriving Show
+
+
+--------------------------------------------------------------------------------
+-- Supercombinator Naming Monad
+
+
+type NameS = ST.State Int
+
+newName :: NameS String
+newName = ('$':) . show <$> (ST.modify (+1) >> ST.get)
 
 
 --------------------------------------------------------------------------------
@@ -94,6 +104,7 @@ emptySCEnv = SCEnv { scenvSCCount = 0, scenvCombs = [] }
 compileExpr :: S.Exp -> Prog
 compileExpr = 
   liftSuperCombs 
+  . traceMsg "NAMED:     " . nameCombs
   . traceMsg "PARAM RES: " . snd . resolveFreeParams []
   . traceMsg "JOINED:    " . joinSuperCombs 
   . traceMsg "INIT:      " . exprToSuperComb
@@ -119,7 +130,7 @@ exprToSuperComb (S.Term t) = Term t
 exprToSuperComb (S.Apply e1 e2) = 
   App (exprToSuperComb e1) (exprToSuperComb e2)
 
-exprToSuperComb (S.Lambda var body) = NComb [var] [] (exprToSuperComb body)
+exprToSuperComb (S.Lambda var body) = NComb "__NONE__" [var] [] (exprToSuperComb body)
 
 
 --------------------------------------------------------------------------------
@@ -141,18 +152,18 @@ joinSuperCombs (Let (var, val) body) = Let (var, joinSuperCombs val) body
 joinSuperCombs (Letrec binds body) = Letrec (map (joinSuperCombs <$>) binds) body
 joinSuperCombs t@(Term _) = t
 joinSuperCombs (App sc1 sc2) = App (joinSuperCombs sc1) (joinSuperCombs sc2)
-joinSuperCombs (NComb out_bound_ps out_free_ps in_sc) = 
+joinSuperCombs (NComb out_name out_bound_ps out_free_ps in_sc) = 
   let in_sc' = joinSuperCombs in_sc
       m_joined = 
         case in_sc' of 
-          (NComb in_bound_ps in_free_ps in_body) -> 
+          (NComb _ in_bound_ps in_free_ps in_body) -> 
             if null (out_bound_ps `intersect` in_bound_ps) -- don't have shared parameters
               then let bound_ps = out_bound_ps ++ in_bound_ps
                        free_ps = (out_free_ps `union` in_free_ps) \\ bound_ps
-                    in Just $ NComb bound_ps free_ps in_body
+                    in Just $ NComb out_name bound_ps free_ps in_body
               else Nothing
           _ -> Nothing
-   in fromMaybe (NComb out_bound_ps out_free_ps in_sc') m_joined
+   in fromMaybe (NComb out_name out_bound_ps out_free_ps in_sc') m_joined
 
 
 --------------------------------------------------------------------------------
@@ -207,7 +218,7 @@ resolveFreeParams _ t@(Term _) = pure t
 resolveFreeParams bound (App sc1 sc2) = 
   App <$> resolveFreeParams bound sc1 <*> resolveFreeParams bound sc2
 
-resolveFreeParams bound (NComb bound_ps free_ps body) = 
+resolveFreeParams bound (NComb name bound_ps free_ps body) = 
   -- this is where the FPCtx is interesting, 
   -- since the free params in the body become params
   -- of the combinator
@@ -216,7 +227,39 @@ resolveFreeParams bound (NComb bound_ps free_ps body) =
       -- the free vars for the enclosing contexts,
       -- and thus the free vars of this supercombinator
       sc_free_vars = body_free_vars \\ bound_ps
-   in (sc_free_vars, NComb bound_ps (free_ps `union` sc_free_vars) body')
+   in (sc_free_vars, NComb name bound_ps (free_ps `union` sc_free_vars) body')
+  
+
+--------------------------------------------------------------------------------
+-- Give Supercombinators unique names
+
+
+nameCombs :: SuperComb -> SuperComb
+nameCombs sc = 
+  ST.evalState (nameCombsM sc) 0
+
+nameCombsM :: SuperComb -> NameS SuperComb
+
+nameCombsM (Let bind body) = 
+  Let <$> nameBindingM bind <*> nameCombsM body
+
+nameCombsM (Letrec binds body) = 
+  Letrec <$> mapM nameBindingM binds <*> nameCombsM body
+
+nameCombsM t@(Term _) = pure t
+nameCombsM (App sc1 sc2) = App <$> nameCombsM sc1 <*> nameCombsM sc2
+nameCombsM (NComb _ bps fps b) = 
+  NComb <$> newName 
+        <*> pure bps 
+        <*> pure fps 
+        <*> nameCombsM b
+
+nameBindingM :: (String, SuperComb) -> NameS (String, SuperComb)
+nameBindingM (var, NComb _ sc_bps sc_fps sc_body) =
+  do sc_name  <- (++ var) <$> newName
+     sc_body' <- nameCombsM sc_body
+     pure (var, NComb sc_name sc_bps sc_fps sc_body')
+nameBindingM (var, val) = (var,) <$> nameCombsM val 
 
 
 --------------------------------------------------------------------------------
@@ -252,15 +295,14 @@ liftSuperCombsM (Letrec binds body) =
 liftSuperCombsM (Term t) = pure $ S.Term t
 liftSuperCombsM (App sc1 sc2) = 
   S.Apply <$> liftSuperCombsM sc1 <*> liftSuperCombsM sc2
-liftSuperCombsM (NComb bound_ps free_ps body) = 
-  do sc_name <- newSCName
-     body'   <- liftSuperCombsM body
+liftSuperCombsM (NComb name bound_ps free_ps body) = 
+  do body'   <- liftSuperCombsM body
      pushSC $ SC{
-       scName = sc_name,
+       scName = name,
        scParams = free_ps ++ bound_ps,
        scBody = body'
      }
-     pure $ S.mkApply (map S.mkVariable (sc_name : free_ps))
+     pure $ S.mkApply (map S.mkVariable (name : free_ps))
    
 
 --------------------------------------------------------------------------------
