@@ -8,6 +8,7 @@ module Lambda.SCCompiler
 
 import Data.List (intersect, union)
 import Data.Maybe (fromMaybe)
+import Data.Bifunctor (first)
 import qualified Control.Monad.State.Lazy as ST
 import qualified Lambda.Syntax as S
 
@@ -172,7 +173,7 @@ type FPCtx a = ([String], a)
 resolveFreeParams :: [String] -> SuperComb -> FPCtx SuperComb
 
 resolveFreeParams bound (Let (var, val) body) = 
-  Let <$> ((var,) <$> resolve val) <*> resolve body
+  first (`deleteAll` var) $ Let <$> ((var,) <$> resolve val) <*> resolve body
   where 
     resolve = resolveFreeParams (var : bound)
 
@@ -180,7 +181,7 @@ resolveFreeParams bound (Letrec binds body) =
   let resolved_binds :: FPCtx [(String, SuperComb)]
       resolved_binds = foldMap resolveBind binds
 
-   in Letrec <$> resolved_binds <*> resolve body
+   in first (\\ map fst binds) $ Letrec <$> resolved_binds <*> resolve body
   where 
     resolve :: SuperComb -> FPCtx SuperComb
     resolve = resolveFreeParams (map fst binds ++ bound)
@@ -294,7 +295,7 @@ liftSuperCombsM (NComb name bound_ps free_ps body) =
 -- | only removes the first matching occurrence
 (\\) :: Eq a => [a] -> [a] -> [a]
 (\\) = foldl deleteAll
-  where
-    deleteAll :: Eq a => [a] -> a -> [a]
-    deleteAll [] _ = []
-    deleteAll (y':ys') x' = if x' == y' then deleteAll ys' x' else y' : deleteAll ys' x'
+
+deleteAll :: Eq a => [a] -> a -> [a]
+deleteAll [] _ = []
+deleteAll (y':ys') x' = if x' == y' then deleteAll ys' x' else y' : deleteAll ys' x'
