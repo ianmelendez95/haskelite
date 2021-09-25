@@ -89,6 +89,7 @@ compileExpr =
   . traceMsg "PARAM RES: " . resolveFreeParams
   . traceMsg "NAMED:     " . nameCombs
   . traceMsg "JOINED:    " . joinSuperCombs 
+  . traceMsg "TL NAMES:  " . nameTLBinds
   . traceMsg "INIT:      " . exprToSuperComb
   . traceMsg "EXPR:      "
      
@@ -238,6 +239,53 @@ resolveFreeParamsM bound (NComb name bound_ps free_ps body) =
       -- and thus the free vars of this supercombinator
       sc_free_vars = body_free_vars \\ bound_ps
    in (sc_free_vars, NComb name bound_ps (free_ps `union` sc_free_vars) body')
+
+
+--------------------------------------------------------------------------------
+-- Handle top level binding names 
+
+
+nameTLBinds :: SuperComb -> SuperComb 
+nameTLBinds (Let (var, val) body) = 
+  Let (var, nameBinds val) (nameBinds body)
+  where 
+    nameBinds = nameTLBinds' [var]
+
+nameTLBinds (Letrec bs body) = 
+  Letrec (map (nameBinds <$>) bs) (nameBinds body)
+  where 
+    nameBinds = nameTLBinds' (map fst bs)
+
+nameTLBinds sc = sc
+
+
+nameTLBinds' :: [String] -> SuperComb -> SuperComb
+
+nameTLBinds' tl_ns (Let (var, val) body) = 
+  Let (var, nameBinds val) (nameBinds body)
+  where
+    nameBinds = nameTLBinds' tl_ns
+
+nameTLBinds' tl_ns (Letrec binds body) = 
+  Letrec (map (nameBinds <$>) binds) (nameBinds body)
+  where
+    nameBinds = nameTLBinds' tl_ns
+
+nameTLBinds' tl_ns t@(Term (S.Variable v)) = 
+  if v `elem` tl_ns then Term (S.Variable ('$' : v)) 
+                    else t
+
+nameTLBinds' _ t@(Term _) = t
+
+nameTLBinds' tl_ns (App sc1 sc2) = 
+  App (nameBinds sc1) (nameBinds sc2)
+  where
+    nameBinds = nameTLBinds' tl_ns
+
+nameTLBinds' tl_ns (NComb n bps fps b) = 
+  NComb n bps fps (nameTLBinds' tl_ns' b)
+  where
+    tl_ns' = tl_ns \\ bps
   
 
 --------------------------------------------------------------------------------
