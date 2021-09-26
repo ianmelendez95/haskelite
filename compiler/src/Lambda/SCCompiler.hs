@@ -43,6 +43,22 @@ mkSCName = ('$' :)
 
 
 --------------------------------------------------------------------------------
+-- Initial Program Structure
+
+
+-- SC program, which explicitly represents top level bindings
+data SCProg = SCProg [Bind SuperComb] SuperComb
+
+mapSCProg :: (SuperComb -> SuperComb) -> SCProg -> SCProg
+mapSCProg f (SCProg binds body) = SCProg (map (f <$>) binds) (f body)
+
+mapSCProgM :: Monad m => (SuperComb -> m SuperComb) -> SCProg -> m SCProg
+mapSCProgM m_f (SCProg binds body) = 
+  SCProg <$> traverse (traverse m_f) binds
+         <*> m_f body
+
+
+--------------------------------------------------------------------------------
 -- Supercombinator Expression
 
 
@@ -91,10 +107,26 @@ compileExpr =
   liftSuperCombs 
   . traceMsg "PARAM RES: " . resolveFreeParams
   . traceMsg "NAMED:     " . nameCombs
-  . traceMsg "JOINED:    " . joinSuperCombs 
+  . traceMsg "JOINED:    " . mapSCProg joinSuperCombs 
   . traceMsg "TL NAMES:  " . nameTLBinds
-  . traceMsg "INIT:      " . exprToSuperComb
+  . traceMsg "INIT:      " . exprToSCProg
   . traceMsg "EXPR:      "
+
+
+--------------------------------------------------------------------------------
+-- Lambda -> SCProg
+
+
+exprToSCProg :: S.Exp -> SCProg
+exprToSCProg (S.Let bind body) = _letToSCProg [bind] body
+exprToSCProg (S.Letrec binds body) = _letToSCProg binds body
+exprToSCProg expr = SCProg [] (exprToSuperComb expr)
+        
+_letToSCProg :: [(String, S.Exp)] -> S.Exp -> SCProg
+_letToSCProg binds body = 
+  let (SCProg prog_binds prog_body) = exprToSCProg body
+    in SCProg (map (exprToSuperComb <$>) binds ++ prog_binds) prog_body
+
      
 
 --------------------------------------------------------------------------------
@@ -167,32 +199,8 @@ joinSuperCombs (NComb out_name out_bound_ps out_free_ps in_sc) =
 type FPCtx a = ([String], a)
 
 
--- | Delegate to resolveFreeParamsM, but
--- | top level lets are treated specially, 
--- | where their associated variables are free
-resolveFreeParams :: SuperComb -> SuperComb
-
-resolveFreeParams (Let (var, val) body) = 
-  snd $ Let <$> ((var,) <$> resolve val) <*> resolve body
-  where 
-    resolve = resolveFreeParamsM []
-
-resolveFreeParams (Letrec binds body) =
-  let resolved_binds :: FPCtx [(String, SuperComb)]
-      resolved_binds = foldMap resolveBind binds
-
-   in snd $ Letrec <$> resolved_binds <*> resolve body
-  where 
-    resolve :: SuperComb -> FPCtx SuperComb
-    resolve = resolveFreeParamsM []
-
-    -- resolves the binding, returned as a singleton
-    -- within the FPCtx so that the result can be folded 
-    -- with other resolved binding results
-    resolveBind :: (String, SuperComb) -> FPCtx [(String, SuperComb)]
-    resolveBind (var, val) = (:[]) . (var,) <$> resolve val
-
-resolveFreeParams sc = snd $ resolveFreeParamsM [] sc
+resolveFreeParams :: SCProg -> SCProg
+resolveFreeParams = snd . mapSCProgM (resolveFreeParamsM [])
 
 
 -- | resolves the free parameters in the expression,
@@ -248,18 +256,11 @@ resolveFreeParamsM bound (NComb name bound_ps free_ps body) =
 -- Handle top level binding names 
 
 
-nameTLBinds :: SuperComb -> SuperComb 
-nameTLBinds (Let (var, val) body) = 
-  Let (var, nameBinds val) (nameBinds body)
+nameTLBinds :: SCProg -> SCProg 
+nameTLBinds (SCProg tl_binds body) = 
+  SCProg (map (nameBinds <$>) tl_binds) (nameBinds body)
   where 
-    nameBinds = nameTLBinds' [var]
-
-nameTLBinds (Letrec bs body) = 
-  Letrec (map (nameBinds <$>) bs) (nameBinds body)
-  where 
-    nameBinds = nameTLBinds' (map fst bs)
-
-nameTLBinds sc = sc
+    nameBinds = nameTLBinds' (map fst tl_binds)
 
 
 nameTLBinds' :: [String] -> SuperComb -> SuperComb
@@ -295,9 +296,9 @@ nameTLBinds' tl_ns (NComb n bps fps b) =
 -- Give Supercombinators unique names
 
 
-nameCombs :: SuperComb -> SuperComb
+nameCombs :: SCProg -> SCProg
 nameCombs sc = 
-  ST.evalState (nameCombsM sc) 0
+  ST.evalState (mapSCProgM nameCombsM sc) 0
 
 nameCombsM :: SuperComb -> NameS SuperComb
 
@@ -334,10 +335,9 @@ nameBindingM (var, val) = (var,) <$> nameCombsM val
 type Bind a = (String, a)
 
 
-liftSuperCombs :: SuperComb -> Prog
-liftSuperCombs (Let bind body) =     scsToProg (liftTLBinding bind >> liftSuperCombsM body)
-liftSuperCombs (Letrec binds body) = scsToProg (mapM_ liftTLBinding binds >> liftSuperCombsM body)
-liftSuperCombs comb =                scsToProg (liftSuperCombsM comb)
+liftSuperCombs :: SCProg -> Prog
+liftSuperCombs (SCProg tl_binds body) = 
+  scsToProg $ mapM_ liftTLBinding tl_binds >> liftSuperCombsM body
 
 liftTLBinding :: Bind SuperComb -> SCS ()
 liftTLBinding b@(var, NComb _ bps fps sc_body) = 
