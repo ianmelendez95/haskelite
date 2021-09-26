@@ -26,6 +26,8 @@ module Lambda.Syntax
   , freeVariables'
   ) where 
 
+-- TODO: Compile-time Simplifications/Optimizations (Section 14.7)
+
 import Prettyprinter ( (<+>), backslash, dot, vsep, align )
 import Prettyprinter.Render.Util.SimpleDocTree (treeForm, renderSimplyDecorated)
 import Data.Text (Text, unpack, pack)

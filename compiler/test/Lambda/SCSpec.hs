@@ -56,7 +56,7 @@ spec = do
       putStrLn "TRINARY"
       print (SC.compileExpr lam)
 
-    it "p234: compiles recursive lets" $ do
+    it "p237: compiles recursive lets" $ do
       {-
       letrec sumInts = \m. letrec count = \n. if (> n m) Nil (Cons n (count (+ n 1)))
                                in sum (count 1)
