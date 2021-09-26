@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.2.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 89ae1265d20bd4458960d1057a8e418661542769cecfc359c4c08c09b9a5d620
+-- hash: 3abf98921b289ea9d8123464eb872d468c6e6364eb9ebd4494a2077f6aa1af70
 
 name:           hlambda
 version:        0.1.0.0
@@ -27,7 +27,6 @@ source-repository head
 
 library
   exposed-modules:
-      ATypeChecker
       CodeGen.StackCode
       Common.Name
       GhciUtil
