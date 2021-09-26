@@ -38,6 +38,9 @@ data SC = SC {
 instance Show SC where
   show (SC name args expr) = unwords (name : args) ++ " = " ++ show expr
 
+mkSCName :: String -> String
+mkSCName = ('$' :)
+
 
 --------------------------------------------------------------------------------
 -- Supercombinator Expression
@@ -332,7 +335,29 @@ type Bind a = (String, a)
 
 
 liftSuperCombs :: SuperComb -> Prog
-liftSuperCombs comb = scsToProg (liftSuperCombsM comb)
+liftSuperCombs (Let bind body) =     scsToProg (liftTLBinding bind >> liftSuperCombsM body)
+liftSuperCombs (Letrec binds body) = scsToProg (mapM_ liftTLBinding binds >> liftSuperCombsM body)
+liftSuperCombs comb =                scsToProg (liftSuperCombsM comb)
+
+liftTLBinding :: Bind SuperComb -> SCS ()
+liftTLBinding b@(var, NComb _ bps fps sc_body) = 
+  do sc_body' <- liftSuperCombsM sc_body
+     if not (null fps) 
+       then error $ "Top level binding nary combinator has free paramters: " ++ show b
+       else pushSC $ SC {
+               scName = mkSCName var,
+               scParams = bps,
+               scBody = sc_body'
+             }
+
+liftTLBinding (var, val) = 
+  do val' <- liftSuperCombsM val
+     pushSC $ SC {
+       scName = mkSCName var,
+       scParams = [],
+       scBody = val'
+     } 
+
   
 liftSuperCombsM :: SuperComb -> SCS S.Exp
 liftSuperCombsM (Let bind body) = 
@@ -355,7 +380,7 @@ liftSuperCombsM (App sc1 sc2) =
   S.Apply <$> liftSuperCombsM sc1 <*> liftSuperCombsM sc2
 liftSuperCombsM (NComb name bound_ps free_ps body) = 
   do body'   <- liftSuperCombsM body
-     pushSC $ SC{
+     pushSC $ SC {
        scName = name,
        scParams = free_ps ++ bound_ps,
        scBody = body'
