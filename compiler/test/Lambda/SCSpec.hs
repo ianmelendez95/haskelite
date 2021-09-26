@@ -3,7 +3,12 @@ module Lambda.SCSpec where
 import Test.Hspec 
 import qualified Lambda.SCCompiler as SC
 import qualified Lambda.Syntax as S
+import qualified Miranda.Syntax as M
 
+import qualified Transform as Trans
+import qualified Compile as Comp
+
+import SpecUtil
 
 {-
 App (App (NComb "$1" ["x"] (App (NComb "$2" ["x","y"] (App (App (Term -) (Term "y")) 
@@ -76,6 +81,16 @@ spec = do
       -}
       putStrLn "RECURSIVE"
       print (SC.compileExpr sumInts_prog)
+    
+    it "p296: compiles high level syntax" $ do
+      mir_src <- readMiranda "supercombs/simple"
+      prog <- parseHunit mir_src :: IO M.Prog
+      let l_expr = Trans.progToLambda prog
+      putStrLn "HIGH LEVEL COMPILATION"
+      print l_expr
+      putStrLn "======="
+      print $ Comp.lexprToSCProg (Trans.progToLambda prog)
+
 
 sumInts_prog :: S.Exp 
 sumInts_prog = 

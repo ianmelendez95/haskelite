@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3abf98921b289ea9d8123464eb872d468c6e6364eb9ebd4494a2077f6aa1af70
+-- hash: a041a6b5fdb9dd8fd1f316c4cc2afb611e4c97f80b25485078301cc3822ce195
 
 name:           hlambda
 version:        0.1.0.0
@@ -29,6 +29,7 @@ library
   exposed-modules:
       CodeGen.StackCode
       Common.Name
+      Compile
       GhciUtil
       Lambda.AlphaConv
       Lambda.CaseCompiler
@@ -56,6 +57,7 @@ library
       MyTypeChecker
       Parse
       Trace
+      Transform
   other-modules:
       Paths_hlambda
   hs-source-dirs:
