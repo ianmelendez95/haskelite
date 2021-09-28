@@ -3,13 +3,9 @@ module CodeGen.GCode
   ) where 
 
 
-import Data.List (lookup)
-
 import qualified Lambda.Syntax as S
 import qualified Lambda.SCCompiler as SC
 
-
-type GCode = [GInstr]
 
 data GInstr =  Begin
             | End
@@ -102,13 +98,11 @@ lookupOffset name offsets =
 -- | C Compilation scheme
 compileExpr :: S.Exp -> Offsets -> Int -> [GInstr]
 
--- terms
 compileExpr (S.Term (S.Constant c)) _ _ = [compileConstant c]
 compileExpr (S.Term (S.Function f)) _ _ = [PushGlobal ('$' : show f)]
 compileExpr (S.Term (S.Variable sc@('$' : _))) _ _ = [PushGlobal sc]
 compileExpr (S.Term (S.Variable v)) offsets depth = [Push (depth - lookupOffset v offsets)]
 
--- application
 compileExpr (S.Apply exp1 exp2) offsets depth = 
   compileExpr exp2 offsets depth ++ compileExpr exp1 offsets (depth + 1)
 
