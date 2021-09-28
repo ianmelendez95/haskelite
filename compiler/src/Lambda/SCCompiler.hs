@@ -2,7 +2,10 @@
 
 module Lambda.SCCompiler
   ( Prog (..)
+
   , SC (..)
+  , scArity
+
   , compileExpr
   ) where
 
@@ -40,6 +43,9 @@ instance Show SC where
 
 mkSCName :: String -> String
 mkSCName = ('$' :)
+
+scArity :: SC -> Int
+scArity = length . scParams
 
 
 --------------------------------------------------------------------------------

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: a041a6b5fdb9dd8fd1f316c4cc2afb611e4c97f80b25485078301cc3822ce195
+-- hash: c70265d13a592436a7eea1714016c4efc15e458c895309fa46eb785f948bbd78
 
 name:           hlambda
 version:        0.1.0.0
@@ -27,6 +27,7 @@ source-repository head
 
 library
   exposed-modules:
+      CodeGen.GCode
       CodeGen.StackCode
       Common.Name
       Compile
