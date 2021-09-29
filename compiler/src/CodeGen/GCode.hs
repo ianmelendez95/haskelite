@@ -70,7 +70,7 @@ compileSC sc =
       globstart = GlobStart (SC.scName sc) (SC.scArity sc)
       
       -- R compilation scheme
-      body_code = compileExpr (SC.scBody sc) offsets depth ++ [Update (depth + 1), Pop depth, Unwind]
+      body_code = compileExpr offsets depth (SC.scBody sc) ++ [Update (depth + 1), Pop depth, Unwind]
    in globstart : body_code
 
 
@@ -96,35 +96,35 @@ lookupOffset name offsets =
 
 
 -- | C Compilation scheme
-compileExpr :: S.Exp -> Offsets -> Int -> [GInstr]
+compileExpr :: Offsets -> Int -> S.Exp -> [GInstr]
 
-compileExpr (S.Term (S.Constant c)) _ _ = [compileConstant c]
-compileExpr (S.Term (S.Function f)) _ _ = [PushGlobal ('$' : show f)]
-compileExpr (S.Term (S.Variable sc@('$' : _))) _ _ = [PushGlobal sc]
-compileExpr (S.Term (S.Variable v)) offsets depth = [Push (depth - lookupOffset v offsets)]
+compileExpr _ _ (S.Term (S.Constant c)) = [compileConstant c]
+compileExpr _ _ (S.Term (S.Function f)) = [PushGlobal ('$' : show f)]
+compileExpr _ _ (S.Term (S.Variable sc@('$' : _))) = [PushGlobal sc]
+compileExpr offsets depth (S.Term (S.Variable v)) = [Push (depth - lookupOffset v offsets)]
 
-compileExpr (S.Apply exp1 exp2) offsets depth = 
-  let exp2_code = compileExpr exp2 offsets depth
-      exp1_code = compileExpr exp1 offsets (depth + 1)
+compileExpr offsets depth (S.Apply exp1 exp2) = 
+  let exp2_code = compileExpr offsets depth exp2
+      exp1_code = compileExpr offsets (depth + 1) exp1
    in exp2_code ++ exp1_code ++ [MkAp]
 
-compileExpr (S.Let (var, val) body) offsets depth = 
-  let val_code = compileExpr val offsets depth
+compileExpr offsets depth (S.Let (var, val) body) = 
+  let val_code = compileExpr offsets depth val 
 
       body_offsets = pushOffset var (depth + 1) offsets
-      body_code = compileExpr body body_offsets (depth + 1)
+      body_code = compileExpr body_offsets (depth + 1) body
 
    in val_code ++ body_code ++ [Slide 1]
 
-compileExpr (S.Letrec binds body) offsets depth = 
+compileExpr offsets depth (S.Letrec binds body) = 
   let (offsets', depth') = lrBindsContext offsets depth binds
 
       binds_code = compileLRBinds offsets' depth' binds
-      body_code = compileExpr body offsets' depth'
+      body_code = compileExpr offsets' depth' body
 
    in binds_code ++ body_code ++ [Slide (depth' - depth)]
 
-compileExpr l@(S.Lambda _ _) _ _ = error $ "Lambda in supercombinator: " ++ show l
+compileExpr _ _ l@(S.Lambda _ _) = error $ "Lambda in supercombinator: " ++ show l
 
 compileConstant :: S.Constant -> GInstr
 compileConstant (S.CNat n) = PushInt n
@@ -143,7 +143,7 @@ compileLRBinds offsets depth binds =
    in Alloc n : binds_code
   where 
     compileEnumBind b_n b_val = 
-      compileExpr b_val offsets depth ++ [Update b_n]
+      compileExpr offsets depth b_val ++ [Update b_n]
 
 lrBindsContext :: Offsets -> Int -> [(String, S.Exp)] -> (Offsets, Int)
 lrBindsContext offsets depth binds = 
