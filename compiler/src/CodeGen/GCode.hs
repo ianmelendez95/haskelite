@@ -104,7 +104,9 @@ compileExpr (S.Term (S.Variable sc@('$' : _))) _ _ = [PushGlobal sc]
 compileExpr (S.Term (S.Variable v)) offsets depth = [Push (depth - lookupOffset v offsets)]
 
 compileExpr (S.Apply exp1 exp2) offsets depth = 
-  compileExpr exp2 offsets depth ++ compileExpr exp1 offsets (depth + 1)
+  let exp2_code = compileExpr exp2 offsets depth
+      exp1_code = compileExpr exp1 offsets (depth + 1)
+   in exp2_code ++ exp1_code ++ [MkAp]
 
 compileExpr (S.Let (var, val) body) offsets depth = 
   let val_code = compileExpr val offsets depth
