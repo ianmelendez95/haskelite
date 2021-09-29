@@ -1,5 +1,6 @@
 module CodeGen.GCode 
-  ( compileSCProg
+  ( GInstr (..)
+  , compileSCProg
   ) where 
 
 
@@ -45,6 +46,36 @@ data GInstr =  Begin
             | PushFail
             | PushError
 
+instance Show GInstr where 
+  show Begin = "Begin"
+  show End = "End"
+  show MkAp = "MkAp"
+  show Eval = "Eval"
+  show Unwind = "Unwind"
+  show Print = "Print"
+  show (Alloc n) = "Alloc" ++ show n
+  show (PushGlobal s) = "PushGlobal " ++ s
+  show (Push n) = "Push " ++ show n
+  show (Update n) = "Update " ++ show n
+  show (Pop n) = "Pop " ++ show n
+  show (Slide n) = "Slide " ++ show n
+  show Neg = "Neg"
+  show Add = "Add"
+  show Sub = "Sub"
+  show If = "If"
+  show FatBar = "FatBar"
+  show Cons = "Cons"
+  show Head = "Head"
+  show Tail = "Tail"
+  show (GlobStart s n) = unwords ["GlobStart", s, show n]
+  show (PushInt n) = "PushInt " ++ show n
+  show (PushChar c) = "PushChar " ++ show c
+  show (PushBool b) = "PushBool " ++ show b
+  show PushNil = "PushNil"
+  show PushFail = "PushFail"
+  show PushError = "PushError"
+
+
 
 compileSCProg :: SC.Prog -> [GInstr]
 compileSCProg (SC.Prog scs main) = 
@@ -57,7 +88,7 @@ compileSCProg (SC.Prog scs main) =
         ]
       
       sc_lib = concatMap compileSC scs ++ compileSC (SC.SC "$Prog" [] main)
-      sc_builtins = undefined
+      sc_builtins = []
    in prelude ++ sc_lib ++ sc_builtins
 
 

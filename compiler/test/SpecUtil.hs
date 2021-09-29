@@ -21,6 +21,9 @@ readEnriched base_name = readFile $ "test-ref/" ++ base_name ++ ".el"
 readLambda :: FilePath -> IO String
 readLambda base_name = readFile $ "test-ref/" ++ base_name ++ ".l"
 
+readGCode :: FilePath -> IO String 
+readGCode base_name = readFile $ "test-ref/" ++ base_name ++ ".g"
+
 ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
 ioShouldBe io val = (`shouldBe` val) =<< io
 
