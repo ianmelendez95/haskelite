@@ -21,3 +21,13 @@ spec = do
       let gcode = mirandaToGCode msrc
 
       unlines (map show gcode) `shouldBe` gcontent
+
+    it "[from] Compiles more moderate example" $ do
+      let test_file_base = "gcode/from"
+      mcontent <- readMiranda test_file_base
+      let gcontent = ""
+
+      msrc <- parseHunit mcontent
+      let gcode = mirandaToGCode msrc
+
+      unlines (map show gcode) `shouldBe` gcontent

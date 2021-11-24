@@ -7,6 +7,7 @@ module CodeGen.GCode
 import qualified Lambda.Syntax as S
 import qualified Lambda.SCCompiler as SC
 
+import Debug.Trace (trace)
 
 data GInstr = Begin
             | End
@@ -95,14 +96,20 @@ compileSCProg (SC.Prog scs main) =
 -- | F compilation scheme
 compileSC :: SC.SC -> [GInstr]
 compileSC sc = 
-  let offsets = []
-      depth = 0
-
-      globstart = GlobStart (SC.scName sc) (SC.scArity sc)
+  let globstart = GlobStart (SC.scName sc) (SC.scArity sc)
       
-      -- R compilation scheme
-      body_code = compileExpr offsets depth (SC.scBody sc) ++ [Update (depth + 1), Pop depth, Unwind]
+      -- R compilation scheme (resolve context)
+      sc_params = SC.scParams sc
+      sc_depth = length sc_params -- initial depth happens to equal to the number of args on the stack
+      sc_offsets = zip sc_params (enumDescending sc_depth)
+        
+      -- R compilation scheme (compile)
+      body_code = trace ("Compiling SC: " ++ show sc) 
+        $ compileExpr sc_offsets sc_depth (SC.scBody sc) ++ [Update (sc_depth + 1), Pop sc_depth, Unwind]
    in globstart : body_code
+  where 
+    enumDescending :: Enum a => a -> [a]
+    enumDescending start = enumFromThen start (pred start)
 
 
 --------------------------------------------------------------------------------
