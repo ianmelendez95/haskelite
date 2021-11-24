@@ -8,7 +8,7 @@ import qualified Lambda.Syntax as S
 import qualified Lambda.SCCompiler as SC
 
 
-data GInstr =  Begin
+data GInstr = Begin
             | End
 
             -- stack meta ops
