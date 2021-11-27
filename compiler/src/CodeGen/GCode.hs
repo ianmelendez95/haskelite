@@ -48,6 +48,11 @@ data GInstr = Begin
             | PushFail
             | PushError
 
+            -- jumps
+            | Jump   Int
+            | JFalse Int
+            | Label  Int
+
 instance Show GInstr where 
   show Begin = "Begin"
   show End = "End"
@@ -77,6 +82,9 @@ instance Show GInstr where
   show PushNil = "PushNil"
   show PushFail = "PushFail"
   show PushError = "PushError"
+  show (Jump l)   = "Jump L" ++ show l
+  show (JFalse l) = "JFalse L" ++ show l
+  show (Label l)  = "Label L" ++ show l
 
 
 
@@ -206,6 +214,8 @@ builtins =
   , builtinCons
   , builtinHead
   , builtinTail
+
+  , builtinIf
   ]
 
 builtinNeg :: [GInstr]
@@ -253,5 +263,24 @@ builtinTail =
   , Tail
   , Eval
   , Update 1
+  , Unwind
+  ]
+
+builtinIf :: [GInstr]
+builtinIf = 
+  [ GlobStart "$IF" 3
+  , Eval
+
+  , JFalse 1
+  , Push 1
+  , Jump 2
+
+  , Label 1
+  , Push 2
+
+  , Label 2
+  , Eval
+  , Update 4
+  , Pop 3
   , Unwind
   ]
