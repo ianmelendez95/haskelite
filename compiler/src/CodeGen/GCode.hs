@@ -16,6 +16,7 @@ data GInstr = Begin
             | MkAp 
             | Eval
             | Unwind
+            | Return
             | Print
             | Alloc Int
 
@@ -53,6 +54,7 @@ instance Show GInstr where
   show MkAp = "MkAp"
   show Eval = "Eval"
   show Unwind = "Unwind"
+  show Return = "Return"
   show Print = "Print"
   show (Alloc n) = "Alloc" ++ show n
   show (PushGlobal s) = "PushGlobal " ++ s
@@ -89,8 +91,7 @@ compileSCProg (SC.Prog scs main) =
         ]
       
       sc_lib = concatMap compileSC scs ++ compileSC (SC.SC "$Prog" [] main)
-      sc_builtins = []
-   in prelude ++ sc_lib ++ sc_builtins
+   in prelude ++ sc_lib ++ concat builtins
 
 
 -- | F compilation scheme
@@ -193,3 +194,64 @@ lrBindsContext offsets depth binds =
       depth'   = depth + length binds
    in (offsets', depth')
 
+
+--------------------------------------------------------------------------------
+-- Builtins
+
+builtins :: [[GInstr]]
+builtins = 
+  [ builtinNeg
+  , builtinPlus
+
+  , builtinCons
+  , builtinHead
+  , builtinTail
+  ]
+
+builtinNeg :: [GInstr]
+builtinNeg = 
+  [ GlobStart "$NEG" 1 
+  , Eval 
+  , Neg
+  , Update 1
+  , Return
+  ]
+
+builtinPlus :: [GInstr]
+builtinPlus = 
+  [ GlobStart "$+" 2
+  , Push 1
+  , Eval
+  , Add
+  , Update 3
+  , Pop 2
+  , Return
+  ]
+
+builtinCons :: [GInstr]
+builtinCons = 
+  [ GlobStart "$CONS" 2
+  , Cons 
+  , Update 1 
+  , Return
+  ]
+
+builtinHead :: [GInstr]
+builtinHead =
+  [ GlobStart "$HEAD" 1
+  , Eval
+  , Head
+  , Eval
+  , Update 1
+  , Unwind
+  ]
+
+builtinTail :: [GInstr]
+builtinTail =
+  [ GlobStart "$TAIL" 1
+  , Eval
+  , Tail
+  , Eval
+  , Update 1
+  , Unwind
+  ]
