@@ -25,7 +25,7 @@ spec = do
     it "[from] Compiles more moderate example" $ do
       let test_file_base = "gcode/from"
       mcontent <- readMiranda test_file_base
-      let gcontent = ""
+      gcontent <- readGCode test_file_base
 
       msrc <- parseHunit mcontent
       let gcode = mirandaToGCode msrc
