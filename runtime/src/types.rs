@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::fmt;
+use std::fmt::Formatter;
 
-pub type UBInt = u64;
+pub type UBInt = i64;
 
-#[derive(Copy,Clone)]
+#[derive(Debug,Copy,Clone)]
 pub enum GCode {
 
 }
@@ -14,6 +16,7 @@ pub enum GNode {
   GCons(Rc<GNode>, Rc<GNode>),
   GAp(Rc<GNode>, Rc<GNode>),
   GFun(UBInt, Rc<GProg>),
+  GProc(fn(&mut GState)),
   GHole(),
   GSRef(Rc<GNode>)
 }
@@ -35,3 +38,30 @@ pub struct GState {
   pub dump: GDump
 }
 
+impl fmt::Debug for GNode {
+  fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    match self {
+      GNode::GInt(i) => {
+        write!(f, "Int({})", i)
+      }
+      GNode::GCons(l, r) => {
+        write!(f, "Cons({:?}, {:?})", l, r)
+      }
+      GNode::GAp(func, arg) => {
+        write!(f, "Ap({:?}, {:?})", func, arg)
+      }
+      GNode::GFun(arity, body) => {
+        write!(f, "GFun({:?}, {:?})", arity, body)
+      }
+      GNode::GProc(proc) => {
+        write!(f, "GProc(?)")
+      }
+      GNode::GHole() => {
+        write!(f, "GHole()")
+      }
+      GNode::GSRef(r) => {
+        write!(f, "GSRef({:?})", r)
+      }
+    }
+  }
+}
