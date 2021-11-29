@@ -45,10 +45,12 @@ pub fn eval(state: &mut GState) {
   panic!("NOT IMPLEMENTED");
 }
 
+pub fn g_return(state: &mut GState) {
+  panic!("NOT IMPLEMENTED");
+}
+
 // TODO - should modify in place (would require a modifiable Rc<RefCell<_>>)
 pub fn neg(state: &mut GState) {
-  eval(state);
-
   // neg impl
   let arg: Rc<GNode> = state.stack.pop().unwrap();
 
@@ -59,7 +61,27 @@ pub fn neg(state: &mut GState) {
     }
     v => { panic!("NEG called on non-numeric node: {:?}", v); }
   }
+}
 
-  update(state, 1);
-  unwind(state);
+pub fn add(state: &mut GState) {
+  let x = state.stack.pop().unwrap();
+  let y = state.stack.pop().unwrap();
+
+  // let arg_val = *arg;
+  match &*x {
+    GNode::GInt(x_val) => {
+      match &*y {
+        GNode::GInt(y_val) => {
+          state.stack.push(Rc::from(GNode::GInt(x_val + y_val)));
+        }
+        v => { panic!("ADD called on non-numeric node: {:?}", v); }
+      }
+    }
+    v => { panic!("ADD called on non-numeric node: {:?}", v); }
+  }
+}
+
+pub fn print(state: &GState) {
+  let x = state.stack.get(state.stack.len()).unwrap();
+  println!("{:?}", x);
 }
