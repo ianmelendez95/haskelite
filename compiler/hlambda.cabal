@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.35.2.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 517cc9fa890d901ce2ddf05d24b182d6aaa3ecda2344bd422c94fa91520ce151
+-- hash: 12b2f3e8f3adf5fda1b3ebb3d8a87ffcb73cbf008cd280ab94eefcdf3b6a1d6b
 
 name:           hlambda
 version:        0.1.0.0
@@ -32,6 +32,7 @@ library
       Common.Name
       Compile
       GhciUtil
+      Haskelite.Syntax
       Interpret.GCode
       Lambda.AlphaConv
       Lambda.CaseCompiler
@@ -69,6 +70,7 @@ library
     , base >=4.7 && <5
     , containers
     , mtl
+    , parsec
     , prettyprinter
     , prettyprinter-ansi-terminal
     , text
