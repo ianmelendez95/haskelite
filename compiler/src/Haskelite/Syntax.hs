@@ -23,14 +23,16 @@ import Text.Parsec.Language (emptyDef)
 
 type Parser = Parsec T.Text () 
 
+data Exp = LInt Integer deriving Show
+
 doParseHaskelite :: String -> IO ()
 doParseHaskelite input = 
   case parseHaskelite (T.pack input) of 
     Left err -> print err
     Right res -> print res
 
-parseHaskelite :: T.Text -> Either ParseError String
-parseHaskelite = parse (show <$> decimal) "(unknown)" 
+parseHaskelite :: T.Text -> Either ParseError Exp
+parseHaskelite = parse (LInt <$> decimal) "(unknown)" 
 
 parseChar :: Parser Char
 parseChar = satisfy (const True)
