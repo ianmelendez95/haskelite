@@ -23,7 +23,7 @@ import Text.Parsec.Language (emptyDef)
 
 type Parser = Parsec T.Text () 
 
-data Exp = LInt Integer deriving Show
+newtype Exp = LInt Integer deriving Show
 
 doParseHaskelite :: String -> IO ()
 doParseHaskelite input = 
