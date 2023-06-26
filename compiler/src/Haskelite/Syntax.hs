@@ -32,13 +32,20 @@ doParseHaskelite input =
     Right res -> print res
 
 parseHaskelite :: T.Text -> Either ParseError Exp
-parseHaskelite = parse (LInt <$> decimal) "(unknown)" 
+parseHaskelite = parse (LInt <$> integer) "(unknown)" 
 
 parseChar :: Parser Char
 parseChar = satisfy (const True)
 
-decimal :: Parser Integer
-decimal = P.decimal lexer
+integer :: Parser Integer
+integer = do 
+  num <- P.decimal lexer
+  if num > fromIntegral max64BitInt
+    then fail $ "Integer literals may only be 64 bits (max size" ++ show max64BitInt ++ ")" 
+    else pure num
+  where 
+    max64BitInt :: Integer
+    max64BitInt = (2 :: Integer) ^ (63 :: Integer)
 
 lexer :: P.GenTokenParser T.Text () Identity
 lexer = P.makeTokenParser haskelite

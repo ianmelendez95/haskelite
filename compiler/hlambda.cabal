@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 12b2f3e8f3adf5fda1b3ebb3d8a87ffcb73cbf008cd280ab94eefcdf3b6a1d6b
+-- hash: 7fc863529e2a505cfd2123c473b3a69468e6b0bf0d1c86e338ac3cfc6a375567
 
 name:           hlambda
 version:        0.1.0.0
@@ -32,6 +32,8 @@ library
       Common.Name
       Compile
       GhciUtil
+      Haskelite.Gen
+      Haskelite.HCode
       Haskelite.Syntax
       Interpret.GCode
       Lambda.AlphaConv
