@@ -33,6 +33,7 @@ library:
   - mtl
   - containers
   - parsec
+  - process
 
 executables:
   hl:
@@ -53,6 +54,7 @@ executables:
     - prettyprinter-ansi-terminal
     - filepath
     - parsec
+    - process
 
 tests:
   hlambda-test:

@@ -74,6 +74,7 @@ library
     , parsec
     , prettyprinter
     , prettyprinter-ansi-terminal
+    , process
     , text
     , text-show
   default-language: Haskell2010
@@ -96,6 +97,7 @@ executable hl
     , pretty-simple
     , prettyprinter
     , prettyprinter-ansi-terminal
+    , process
     , text
   default-language: Haskell2010
 
