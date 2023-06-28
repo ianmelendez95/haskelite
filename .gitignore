@@ -12,7 +12,8 @@ massif/
 
 # Testing
 /testsuite/tests/should-succeed/*.s
-/
+/test-ref/build/
+/test-ref/dist/
 
 # BEGIN for Rust
 

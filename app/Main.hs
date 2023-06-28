@@ -5,6 +5,7 @@ import System.Environment
 import System.FilePath
 import System.Directory
 import System.Process
+import System.Exit
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 
@@ -12,15 +13,17 @@ import Haskelite
 
 main :: IO ()
 main = do
-  cwd <- getCurrentDirectory
   args <- getArgs
   case args of 
-    [] -> void $ error "Usage: hlite file"
     [hl_file] -> do
       rs_prog <- compileFile hl_file
-      let rs_file = cwd </> "build" </> dropExtension (takeFileName hl_file) ++ ".rs"
-      TIO.writeFile rs_file rs_prog
+      removeDirectoryRecursive "build"
       cloneRuntime
+      TIO.writeFile "build/runtime/src/prog.rs" rs_prog
+      buildProg
+      dist (dropExtension . takeFileName $ hl_file)
+    _ -> void $ error "Usage: hlite file"
+
 
 compileFile :: FilePath -> IO T.Text
 compileFile hl_file = do
@@ -37,3 +40,16 @@ cloneRuntime = do
   where 
     runtime_repo_url :: String
     runtime_repo_url = "https://github.com/ianmelendez95/haskelite-runtime.git"
+
+buildProg :: IO ()
+buildProg = 
+  withCreateProcess (proc "cargo" ["build"]){ cwd = Just "build/runtime", delegate_ctlc = True } $ \_ _ _ p -> do
+    r <- waitForProcess p
+    case r of 
+      ExitSuccess -> pure ()
+      ExitFailure rc -> void $ error $ "Failed to build executable with exit code: " ++ show rc
+
+dist :: String -> IO ()
+dist bin_filename = do 
+  createDirectoryIfMissing True "dist"
+  copyFile "build/runtime/target/debug/runtime" ("dist" </> bin_filename)

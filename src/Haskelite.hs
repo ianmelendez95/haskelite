@@ -18,9 +18,9 @@ genRust (S.LInt x) = progFun (pushInt x)
 
 progFun :: T.Text -> T.Text
 progFun body = T.unlines 
-  [ "use crate::builtins::State"
+  [ "use crate::builtins::State;"
   , ""
-  , "fn prog(state: &mut State) {"
+  , "pub fn prog(state: &mut State) {"
   , tabIndent body
   , "}"
   ]
