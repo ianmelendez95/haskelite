@@ -1,7 +1,8 @@
 module Haskelite.Gen where 
 
+import qualified Data.Text as T
 import qualified Haskelite.Syntax as S
-import qualified Haskelite.HCode as C
+import qualified Rust.Lang as R
 
-genHCode :: S.Exp -> C.HCode
-genHCode (S.LInt x) = C.HInt x  -- 64 bit integer is checked by parser
+genRust :: S.Exp -> T.Text
+genRust (S.LInt x) = R.progFun (R.pushInt x)

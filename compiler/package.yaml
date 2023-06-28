@@ -1,10 +1,10 @@
-name:                hlambda
+name:                haskelite
 version:             0.1.0.0
-github:              "githubuser/hlambda"
-license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2021 Author name here"
+github:              "ianmelendez95/haskelite"
+license:             MIT
+author:              "Ian Melendez"
+maintainer:          "ian.melendez.95@gmail.com"
+copyright:           "2023 Ian Melendez"
 
 extra-source-files:
 - README.md
@@ -28,6 +28,7 @@ library:
   - array
   - prettyprinter
   - text
+  - text-show
   - prettyprinter-ansi-terminal
   - mtl
   - containers
@@ -42,7 +43,8 @@ executables:
     - -rtsopts
     - -with-rtsopts=-N
     dependencies:
-    - hlambda
+    - haskelite
+    - directory
     - text 
     - haskeline
     - mtl
@@ -50,6 +52,7 @@ executables:
     - prettyprinter
     - prettyprinter-ansi-terminal
     - filepath
+    - parsec
 
 tests:
   hlambda-test:
