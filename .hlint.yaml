@@ -6,6 +6,11 @@
 # placed as .hlint.yaml in the root of your project
 
 
+# Warnings currently triggered by your code
+- ignore: {name: "Use camelCase"}
+- ignore: {name: "Reduce duplication"}
+
+
 # Specify additional command line arguments
 #
 # - arguments: [--color, --cpp-simple, -XQuasiQuotes]
@@ -26,7 +31,11 @@
 #   - {name: Control.Arrow, within: []} # Certain modules are banned entirely
 #
 # - functions:
-#   - {name: unsafePerformIO, within: []} # unsafePerformIO can only appear in no modules
+#   - {name: unsafePerformIO, within: [], message: "Use Set functions instead"} # unsafePerformIO can only appear in no modules
+- functions:
+  - { name: \\
+    , within: [SCCompiler]  # overridden in these modules
+    } 
 
 
 # Add custom hints for this project
@@ -50,7 +59,6 @@
 # Ignore some builtin hints
 # - ignore: {name: Use let}
 # - ignore: {name: Use const, within: SpecialModule} # Only within certain modules
-- ignore: {name: Use camelCase}
 
 
 # Define some custom infix operators

@@ -1,7 +1,0 @@
-INT 0
-INT 1
-BOO T
-FUN IF
-APP
-APP
-APP

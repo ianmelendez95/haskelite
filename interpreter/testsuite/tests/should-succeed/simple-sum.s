@@ -1,5 +1,0 @@
-INT 13
-INT 29
-FUN +
-APP
-APP
