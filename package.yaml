@@ -32,6 +32,8 @@ library:
   - prettyprinter-ansi-terminal
   - mtl
   - containers
+  - filepath
+  - directory
   - parsec
   - process
 
