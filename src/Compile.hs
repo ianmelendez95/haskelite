@@ -1,18 +1,33 @@
-module Compile 
-  ( lexprToSCProg
-  , mirandaToGCode
-  ) where 
+{-# LANGUAGE OverloadedStrings #-}
 
-import qualified Lambda.Syntax as S
-import qualified Miranda.Syntax as M
-import qualified Lambda.SCCompiler as SC
-import Lambda.ToLambda (ToLambda (..))
+module Compile where
 
-import qualified CodeGen.GCode as GC
+import TextShow
+import qualified Data.Text as T
+import qualified Haskelite.Syntax as S
+import qualified Haskelite.Parse as P
 
-lexprToSCProg :: S.Exp -> SC.Prog
-lexprToSCProg = SC.compileExpr
+import Text.Parsec (ParseError)
 
-mirandaToGCode :: M.Prog -> [GC.GInstr]
-mirandaToGCode = GC.compileSCProg . SC.compileExpr . toLambda
+compile :: T.Text -> Either ParseError T.Text
+compile input = genRust <$> P.parseHaskelite input
 
+-- Rust Gen
+
+genRust :: S.Exp -> T.Text
+genRust (S.LInt x) = progFun (pushInt x)
+
+progFun :: T.Text -> T.Text
+progFun body = T.unlines 
+  [ "use crate::builtins::State;"
+  , ""
+  , "pub fn prog(state: &mut State) {"
+  , tabIndent body
+  , "}"
+  ]
+
+tabIndent :: T.Text -> T.Text
+tabIndent text = "    " <> text
+
+pushInt :: Integer -> T.Text
+pushInt x = "state.push_int(" <> showt x <> ")"

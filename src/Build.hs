@@ -9,7 +9,7 @@ import System.Exit
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 
-import Haskelite
+import Compile
 
 buildHlFile :: FilePath -> IO ()
 buildHlFile hl_file = do

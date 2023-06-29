@@ -26,43 +26,10 @@ source-repository head
 library
   exposed-modules:
       Build
-      CodeGen.GCode
-      CodeGen.StackCode
-      Common.Name
       Compile
-      GhciUtil
-      Haskelite
-      Haskelite.Gen
+      Haskelite.Parse
       Haskelite.Syntax
-      Interpret.GCode
-      Lambda.AlphaConv
-      Lambda.CaseCompiler
-      Lambda.Constructor
-      Lambda.DepAnalysis
-      Lambda.Enriched
-      Lambda.EnrichedCompiler
-      Lambda.Eval
-      Lambda.LetLetrec
-      Lambda.Name
-      Lambda.Pretty
-      Lambda.Reduce
-      Lambda.SCCompiler
-      Lambda.Syntax
-      Lambda.Token
-      Lambda.ToLambda
-      Miranda.Compiler
-      Miranda.Lexer
-      Miranda.Parser
-      Miranda.PattMatch
-      Miranda.Syntax
-      Miranda.Token
-      Miranda.TypeChecker
-      Miranda.TypeExpr
-      MyTypeChecker
-      Parse
-      Rust.Lang
       Trace
-      Transform
   other-modules:
       Paths_haskelite
   hs-source-dirs:
