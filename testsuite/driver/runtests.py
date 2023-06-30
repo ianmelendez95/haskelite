@@ -131,5 +131,6 @@ def exec_test(file_dict):
 
 
 if __name__ == '__main__':
+    subprocess.run(["stack", "build"], check=True)
     for n, fs in collect_test_files(os.path.join(TESTSUITE_DIR, "tests/should-succeed")).items():
         exec_test(fs).print(n)
