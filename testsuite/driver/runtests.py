@@ -28,6 +28,10 @@ def collect_test_files(dir_path):
     test_files = {}
     for test_dir in os.listdir(dir_path):
         for test_file in os.listdir(os.path.join(dir_path, test_dir)):
+            # skip dist/ and build/ directories
+            if test_file in ['dist', 'build']:
+                continue
+
             (name, ext) = os.path.splitext(os.path.basename(test_file))
 
             if name in test_files:
