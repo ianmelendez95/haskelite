@@ -2,10 +2,8 @@
 
 module Haskelite.Parse (doParseHaskelite, parseHaskelite) where 
 
-import Data.Void (Void)
 import qualified Data.Text as T
 import Text.Parsec
-import Text.Parsec.Char
 import qualified Text.Parsec.Token as P
 import Control.Monad.Identity (Identity)
 import Text.Parsec.Language (emptyDef)
@@ -47,7 +45,12 @@ expr = buildExpressionParser table term <?> "expression"
 
     table :: OperatorTable T.Text () Identity Expr
     table = 
-      [ [binary "+" (mkIExpr Plus) AssocLeft] 
+      [ [ binary "*" (mkIExpr Mult)  AssocLeft
+        , binary "/" (mkIExpr Div)   AssocLeft
+        ]
+      , [ binary "+" (mkIExpr Plus)  AssocLeft
+        , binary "-" (mkIExpr Minus) AssocLeft
+        ] 
       ]
 
     binary  name fun assoc = Infix (do{ reservedOp name; return fun }) assoc

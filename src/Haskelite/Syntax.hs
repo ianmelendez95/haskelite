@@ -5,4 +5,9 @@ data Expr
   | LInt Integer 
   deriving Show
 
-data IOp = Plus deriving Show
+data IOp 
+  = Plus 
+  | Minus
+  | Mult
+  | Div
+  deriving Show

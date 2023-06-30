@@ -17,7 +17,7 @@ compile input = genRustProg . genRustInstrs <$> parseHaskelite input
 
 compileExpr :: H.Expr -> [R.Instr]
 compileExpr (H.LInt x) = [R.PushInt x]
-compileExpr (H.IExpr el H.Plus er) = genRustInstrs er ++ genRustInstrs el ++ [R.Sum]
+compileExpr (H.IExpr el H.Plus er) = genRustInstrs er ++ genRustInstrs el ++ [R.Add]
 
 
 -- Rust Gen
@@ -37,12 +37,21 @@ genRustProg instrs = T.unlines (fn_begin ++ map (tabIndent . genRustStmt) instrs
 
 genRustInstrs :: H.Expr -> [R.Instr]
 genRustInstrs (H.LInt x) = [R.PushInt x]
-genRustInstrs (H.IExpr el H.Plus er) = genRustInstrs er ++ genRustInstrs el ++ [R.Sum]
+genRustInstrs (H.IExpr el op er) = genRustInstrs er ++ genRustInstrs el ++ [rustBinOp op]
+  where 
+    rustBinOp :: H.IOp -> R.Instr
+    rustBinOp H.Plus  = R.Add
+    rustBinOp H.Minus = R.Sub
+    rustBinOp H.Mult  = R.Mul
+    rustBinOp H.Div   = R.Div
 
 
 genRustStmt :: R.Instr -> T.Text
 genRustStmt (R.PushInt x) = "state.push_int(" <> showt x <> ");"
-genRustStmt R.Sum = "state.sum();"
+genRustStmt R.Add = "state.add();"
+genRustStmt R.Sub = "state.sub();"
+genRustStmt R.Mul = "state.mul();"
+genRustStmt R.Div = "state.div();"
 
 
 tabIndent :: T.Text -> T.Text

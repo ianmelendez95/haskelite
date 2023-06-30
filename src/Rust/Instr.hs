@@ -1,5 +1,8 @@
-module Rust.Instr where 
+module Rust.Instr (Instr (..)) where 
 
 data Instr 
   = PushInt Integer
-  | Sum
+  | Add
+  | Sub
+  | Mul
+  | Div
