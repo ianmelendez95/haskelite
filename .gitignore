@@ -11,7 +11,8 @@ detailed-info
 massif/
 
 # Testing
-/testsuite/tests/should-succeed/*.s
+/testsuite/tests/should-succeed/**/build/
+/testsuite/tests/should-succeed/**/dist/
 /test-ref/build/
 /test-ref/dist/
 
