@@ -29,6 +29,7 @@ library
       Compile
       Haskelite.Parse
       Haskelite.Syntax
+      Rust.Instr
       Trace
   other-modules:
       Paths_haskelite

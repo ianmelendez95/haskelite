@@ -39,7 +39,7 @@ cloneRuntime :: IO ()
 cloneRuntime = do 
   createDirectoryIfMissing True "build"
   callProcess "git" ["clone", "--depth=1", runtime_repo_url, "build/runtime"]
-  rmRfDirSafe "build/runtime/.git"
+  rmRfDirSafe "build/runtime/.git"  -- avoids test builds getting included in git management
   pure ()
   where 
     runtime_repo_url :: String

@@ -1,3 +1,8 @@
-module Haskelite.Syntax where 
+module Haskelite.Syntax (Expr (..), IOp (..)) where 
 
-newtype Exp = LInt Integer deriving Show
+data Expr
+  = IExpr Expr IOp Expr
+  | LInt Integer 
+  deriving Show
+
+data IOp = Plus deriving Show

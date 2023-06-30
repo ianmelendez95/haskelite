@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 
-module Haskelite.Parse where 
+module Haskelite.Parse (doParseHaskelite, parseHaskelite) where 
 
 import Data.Void (Void)
 import qualified Data.Text as T
@@ -11,6 +11,7 @@ import Control.Monad.Identity (Identity)
 import Text.Parsec.Language (emptyDef)
 
 import Haskelite.Syntax
+import Text.Parsec.Expr 
 
 -- data ParsecT s u m a 
 -- s = stream type
@@ -23,7 +24,9 @@ import Haskelite.Syntax
 -- parse :: Stream s Identity t => Parsec s () a -> String -> s -> Either ParseError a
 -- parse _ sourceName 
 
+
 type Parser = Parsec T.Text () 
+
 
 doParseHaskelite :: String -> IO ()
 doParseHaskelite input = 
@@ -31,24 +34,52 @@ doParseHaskelite input =
     Left err -> print err
     Right res -> print res
 
-parseHaskelite :: T.Text -> Either ParseError Exp
-parseHaskelite = parse (LInt <$> integer) "(unknown)" 
 
-parseChar :: Parser Char
-parseChar = satisfy (const True)
+parseHaskelite :: T.Text -> Either ParseError Expr
+parseHaskelite = parse (expr <* eof) "(unknown)"
 
-integer :: Parser Integer
+
+expr :: Parser Expr
+expr = buildExpressionParser table term <?> "expression"
+  where 
+    term :: Parser Expr
+    term = integer
+
+    table :: OperatorTable T.Text () Identity Expr
+    table = 
+      [ [binary "+" (mkIExpr Plus) AssocLeft] 
+      ]
+
+    binary  name fun assoc = Infix (do{ reservedOp name; return fun }) assoc
+    -- prefix  name fun       = Prefix (do{ reservedOp name; return fun })
+    -- postfix name fun       = Postfix (do{ reservedOp name; return fun })
+
+    mkIExpr :: IOp -> Expr -> Expr -> Expr
+    mkIExpr op el er = IExpr el op er
+
+
+integer :: Parser Expr
 integer = do 
-  num <- P.decimal lexer
+  num <- lexeme $ P.decimal lexer
   if num > fromIntegral max64BitInt
     then fail $ "Integer literals may only be 64 bits (max size" ++ show max64BitInt ++ ")" 
-    else pure num
+    else pure (LInt num) <?> "integer"
   where 
     max64BitInt :: Integer
     max64BitInt = (2 :: Integer) ^ (63 :: Integer)
 
+
+reservedOp :: String -> Parser ()
+reservedOp = P.reservedOp lexer
+
+
+lexeme :: Parser a -> Parser a
+lexeme = P.lexeme lexer
+
+
 lexer :: P.GenTokenParser T.Text () Identity
 lexer = P.makeTokenParser haskelite
+
 
 haskelite :: P.GenLanguageDef T.Text () Identity
 haskelite = emptyDef 
