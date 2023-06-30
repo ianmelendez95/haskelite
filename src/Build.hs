@@ -1,4 +1,4 @@
-module Build where 
+module Build (buildHlFile) where 
 
 import Control.Monad (void, when)
 import System.FilePath
@@ -13,16 +13,16 @@ import Compile
 buildHlFile :: FilePath -> IO ()
 buildHlFile hl_file = do
   rs_prog <- compileFile hl_file
-  rmRfSafe "build"
-  rmRfSafe "dist"
+  rmRfDirSafe "build"
+  rmRfDirSafe "dist"
   cloneRuntime
   TIO.writeFile "build/runtime/src/prog.rs" rs_prog
   buildProg
   dist (dropExtension . takeFileName $ hl_file)
 
 
-rmRfSafe :: FilePath -> IO ()
-rmRfSafe dir = do
+rmRfDirSafe :: FilePath -> IO ()
+rmRfDirSafe dir = do
   exists <- doesDirectoryExist dir
   when exists (removeDirectoryRecursive dir)
 
@@ -38,7 +38,8 @@ compileFile hl_file = do
 cloneRuntime :: IO ()
 cloneRuntime = do 
   createDirectoryIfMissing True "build"
-  callProcess "git" ["clone", runtime_repo_url, "build/runtime"]
+  callProcess "git" ["clone", "--depth=1", runtime_repo_url, "build/runtime"]
+  rmRfDirSafe "build/runtime/.git"
   pure ()
   where 
     runtime_repo_url :: String
