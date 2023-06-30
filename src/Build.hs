@@ -1,7 +1,6 @@
 module Build where 
 
-import Control.Monad (void)
-import System.Environment
+import Control.Monad (void, when)
 import System.FilePath
 import System.Directory
 import System.Process
@@ -14,11 +13,18 @@ import Compile
 buildHlFile :: FilePath -> IO ()
 buildHlFile hl_file = do
   rs_prog <- compileFile hl_file
-  removeDirectoryRecursive "build"
+  rmRfSafe "build"
+  rmRfSafe "dist"
   cloneRuntime
   TIO.writeFile "build/runtime/src/prog.rs" rs_prog
   buildProg
   dist (dropExtension . takeFileName $ hl_file)
+
+
+rmRfSafe :: FilePath -> IO ()
+rmRfSafe dir = do
+  exists <- doesDirectoryExist dir
+  when exists (removeDirectoryRecursive dir)
 
 
 compileFile :: FilePath -> IO T.Text
