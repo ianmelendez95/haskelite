@@ -37,11 +37,26 @@ parseHaskelite :: T.Text -> Either ParseError Expr
 parseHaskelite = parse (expr <* eof) "(unknown)"
 
 
-expr :: Parser Expr
-expr = buildExpressionParser table term <?> "expression"
+expr :: Parser Expr 
+expr = choice [ letExpr, binExpr ]
+
+
+letExpr :: Parser Expr
+letExpr = do 
+  lexeme $ reserved "let"
+  var <- lexeme identifier
+  lexeme $ reservedOp "="
+  val <- lexeme binExpr
+  lexeme $ reserved "in"
+  body <- lexeme binExpr
+  pure $ Let var val body
+
+
+binExpr :: Parser Expr
+binExpr = buildExpressionParser table term <?> "binary/term expression"
   where 
     term :: Parser Expr
-    term = integer
+    term = choice [ integer, var ]
 
     table :: OperatorTable T.Text () Identity Expr
     table = 
@@ -61,6 +76,10 @@ expr = buildExpressionParser table term <?> "expression"
     mkIExpr op el er = IExpr el op er
 
 
+var :: Parser Expr
+var = Var <$> identifier
+
+
 integer :: Parser Expr
 integer = do 
   num <- lexeme $ P.decimal lexer
@@ -70,6 +89,14 @@ integer = do
   where 
     max64BitInt :: Integer
     max64BitInt = (2 :: Integer) ^ (63 :: Integer)
+
+
+identifier :: Parser T.Text
+identifier = T.pack <$> P.identifier lexer
+
+
+reserved :: String -> Parser ()
+reserved = P.reserved lexer
 
 
 reservedOp :: String -> Parser ()

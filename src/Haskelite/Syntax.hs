@@ -1,7 +1,13 @@
-module Haskelite.Syntax (Expr (..), IOp (..)) where 
+module Haskelite.Syntax (Decl, Expr (..), IOp (..)) where 
+
+import qualified Data.Text as T
+
+type Decl = (T.Text, Expr)
 
 data Expr
-  = IExpr Expr IOp Expr
+  = Let T.Text Expr Expr
+  | Var T.Text
+  | IExpr Expr IOp Expr
   | LInt Integer 
   deriving Show
 
