@@ -2,7 +2,8 @@
 
 module Compile where
 
-import TextShow
+import TextShow hiding (singleton)
+import Data.List (singleton)
 import qualified Data.Text as T
 import Haskelite.Parse
 import qualified Haskelite.Syntax as H
@@ -12,24 +13,24 @@ import Text.Parsec (ParseError)
 
 
 compile :: T.Text -> Either ParseError T.Text
-compile input = genRustProg . genRustInstrs <$> parseHaskelite input
+compile input = genRustProg . compileExpr <$> parseHaskelite input
 
 
-compileExpr :: H.Expr -> [R.Instr]
-compileExpr (H.LInt x) = [R.PushInt x]
-compileExpr (H.IExpr el H.Plus er) = genRustInstrs er ++ genRustInstrs el ++ [R.Add]
+compileExpr :: H.Expr -> T.Text
+compileExpr (H.LInt x) = "int(" <> showt x <> ")"
+compileExpr (H.IExpr el H.Plus er) = "add(" <> compileExpr el <> ", " <> compileExpr er <> ")"
 
 
 -- Rust Gen
 
 
-genRustProg :: [R.Instr] -> T.Text
-genRustProg instrs = T.unlines (fn_begin ++ map (tabIndent . genRustStmt) instrs ++ fn_end)
+genRustProg :: T.Text -> T.Text
+genRustProg instr = T.unlines (fn_begin ++ [ "return " <> instr <> ";" ] ++ fn_end)
   where 
     fn_begin = 
-      [ "use crate::builtins::State;"
+      [ "use crate::builtins::*;"
       , ""
-      , "pub fn prog(state: &mut State) {"
+      , "pub fn prog() -> Node {"
       ]
 
     fn_end = [ "}" ]
