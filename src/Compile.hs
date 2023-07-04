@@ -18,7 +18,7 @@ compile input = genRustProg . compileExpr <$> parseHaskelite input
 
 compileExpr :: H.Expr -> T.Text
 compileExpr (H.LInt x) = "int(" <> showt x <> ")"
-compileExpr (H.IExpr el H.Plus er) = "add(" <> compileExpr el <> ", " <> compileExpr er <> ")"
+compileExpr (H.IExpr el op er) = rustBinIFun op <> "(" <> compileExpr el <> ", " <> compileExpr er <> ")"
 
 
 -- Rust Gen
@@ -34,6 +34,13 @@ genRustProg instr = T.unlines (fn_begin ++ [ "return " <> instr <> ";" ] ++ fn_e
       ]
 
     fn_end = [ "}" ]
+
+
+rustBinIFun :: H.IOp -> T.Text
+rustBinIFun H.Plus  = "add"
+rustBinIFun H.Minus = "sub"
+rustBinIFun H.Mult  = "mul"
+rustBinIFun H.Div   = "div"
  
 
 genRustInstrs :: H.Expr -> [R.Instr]
