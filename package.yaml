@@ -36,6 +36,7 @@ library:
   - directory
   - parsec
   - process
+  - lens
 
 executables:
   hl:

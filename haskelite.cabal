@@ -29,6 +29,7 @@ library
       Compile
       Haskelite.Parse
       Haskelite.Syntax
+      Ox.IR
       Rust.Instr
       Trace
   other-modules:
@@ -41,6 +42,7 @@ library
     , containers
     , directory
     , filepath
+    , lens
     , mtl
     , parsec
     , prettyprinter
