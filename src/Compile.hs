@@ -65,6 +65,8 @@ compileHaskeliteToOx expr =
 
 
 compileExprToVal :: H.Expr -> C Ox.Val
+compileExprToVal (H.LInt x) = pure $ Ox.VInt x
+compileExprToVal (H.Var v) = pure $ Ox.VVar v
 compileExprToVal expr = do 
   name_idx <- newNameIdx
   let fname = "e_" <> showt name_idx
@@ -134,6 +136,7 @@ oxExprToRust (Ox.Val v) = oxValToRust v
 
 oxValToRust :: Ox.Val -> T.Text
 oxValToRust (Ox.VInt x) = "int(" <> showt x <> ")"
+oxValToRust (Ox.VVar v) = v
 oxValToRust (Ox.VThunk fname) = "thunk(" <> fname <> ")"
 
 

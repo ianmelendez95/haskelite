@@ -26,6 +26,7 @@ data Expr
 
 data Val
   = VInt Integer
+  | VVar T.Text
   | VThunk T.Text
   deriving Show
 
