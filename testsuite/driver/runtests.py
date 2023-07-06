@@ -148,8 +148,8 @@ def parse_args():
 
 
 if __name__ == '__main__':
-    subprocess.run(["stack", "build"], check=True)
     args = parse_args()
+    subprocess.run(["stack", "build"], check=True)
     for n, fs in collect_test_files(os.path.join(TESTSUITE_DIR, "tests/should-succeed")).items():
         if args.match and not args.match in n:
             TestResult(TestResult.EXCLUDED).print(n)
