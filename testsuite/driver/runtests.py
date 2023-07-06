@@ -2,6 +2,7 @@ import os
 import subprocess
 import difflib
 import sys
+import argparse
 
 
 # ENVIRONMENT SETUP
@@ -130,7 +131,28 @@ def exec_test(file_dict):
         return TestResult(TestResult.FAILED, tf.msg)
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(
+        prog='run-tests',
+        description='Run test suite'
+    )
+
+    parser.add_argument(
+        '-m', '--match',
+        help="Only run tests that match the test name (i.e. 'contains' check on directory name)",
+        action='store',
+        required=False
+    )
+
+    return parser.parse_args()
+
+
 if __name__ == '__main__':
     subprocess.run(["stack", "build"], check=True)
+    args = parse_args()
     for n, fs in collect_test_files(os.path.join(TESTSUITE_DIR, "tests/should-succeed")).items():
+        if args.match and not args.match in n:
+            TestResult(TestResult.EXCLUDED).print(n)
+            continue
+
         exec_test(fs).print(n)
