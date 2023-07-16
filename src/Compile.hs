@@ -64,14 +64,13 @@ compileHaskeliteToOx expr =
    in Map.elems $ c_res ^. funcs
 
 
-compileExprToVal :: H.Expr -> C Ox.Val
-compileExprToVal (H.LInt x) = pure $ Ox.VInt x
-compileExprToVal (H.Var v) = pure $ Ox.VVar v
-compileExprToVal expr = do 
-  name_idx <- newNameIdx
-  let fname = "e_" <> showt name_idx
-  (Ox.Fn fname' _) <- compileExprToFn fname expr
-  pure $ Ox.VThunk fname'
+-- compileExprToVal :: H.Expr -> C Ox.Val
+-- compileExprToVal (H.LInt x) = pure $ Ox.VInt x
+-- compileExprToVal (H.Var v) = pure $ Ox.VVar v
+-- compileExprToVal expr = do 
+--   name_idx <- newNameIdx
+--   ox_expr <- compileExpr expr
+--   pure $ Ox.VThunk fname'
 
 
 compileExprToFn :: T.Text -> H.Expr -> C Ox.Fn
@@ -89,12 +88,12 @@ compileExprToFn fname expr = do
 compileExpr :: H.Expr -> C Ox.Expr
 compileExpr (H.LInt x) = pure . Ox.Val $ Ox.VInt x
 compileExpr (H.Var v) = pure . Ox.Var $ v
+
 compileExpr (H.IExpr el op er) = do
-  ox_el <- Ox.Val <$> compileExprToVal el
-  ox_er <- Ox.Val <$> compileExprToVal er
+  ox_el <- compileExpr el
+  ox_er <- compileExpr er
   pure $ Ox.BiArith (opToOxArith op) ox_el ox_er
 
- --  pure $ rustBinIFun op <> "(" <> compileExpr el <> ", " <> compileExpr er <> ")"
 compileExpr (H.Let var val body) = do 
   ox_val <- compileExpr val
   ox_body <- compileExpr body
