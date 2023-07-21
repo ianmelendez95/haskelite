@@ -17,6 +17,7 @@ import qualified Haskelite.Syntax as H
 import qualified Ox.IR as Ox
 
 import Text.Parsec (ParseError)
+import qualified GHC.Real as Ox
 
 
 type C = State CS
@@ -60,8 +61,9 @@ pushStmt stmt = curStmts %= (stmt:)
 
 compileHaskeliteToOx :: H.Expr -> Ox.Prog
 compileHaskeliteToOx expr =
-  let c_res = execState (compileExprToFn "prog" expr) emptyCS
-   in Map.elems $ c_res ^. funcs
+  let (prog_stmts, c_res) = runState (compileExpr expr) emptyCS
+      prog_fns = Map.elems $ c_res ^. funcs
+   in (prog_stmts, prog_fns)
 
 
 -- compileExprToVal :: H.Expr -> C Ox.Val
@@ -73,48 +75,57 @@ compileHaskeliteToOx expr =
 --   pure $ Ox.VThunk fname'
 
 
-compileExprToFn :: T.Text -> H.Expr -> C Ox.Fn
-compileExprToFn fname expr = do 
-  ox_expr <- compileExpr expr
+-- compileExprToFn :: T.Text -> H.Expr -> C Ox.Fn
+-- compileExprToFn fname expr = do 
+--   ox_expr <- compileExpr expr
 
-  -- get the initializing statements so far (and then clear them)
-  ox_prestmts <- use curStmts <* (curStmts .= [])
+--   -- get the initializing statements so far (and then clear them)
+--   ox_prestmts <- use curStmts <* (curStmts .= [])
 
-  let ox_fn = Ox.Fn fname (ox_prestmts <> [Ox.Ret ox_expr])
-  funcs %= Map.insert fname ox_fn
-  pure ox_fn
+--   let ox_fn = Ox.Fn fname (ox_prestmts <> [Ox.Ret ox_expr])
+--   funcs %= Map.insert fname ox_fn
+--   pure ox_fn
 
 
-compileExpr :: H.Expr -> C Ox.Expr
-compileExpr (H.LInt x) = pure . Ox.Val $ Ox.VInt x
-compileExpr (H.Var v) = pure . Ox.Var $ v
+compileExpr :: H.Expr -> C [Ox.Stmt]
+compileExpr (H.LInt x) = pure [ Ox.PushInt x ]
+compileExpr (H.Var v) = error "impl"
 
 compileExpr (H.IExpr el op er) = do
   ox_el <- compileExpr el
   ox_er <- compileExpr er
-  pure $ Ox.BiArith (opToOxArith op) ox_el ox_er
+  pure $ ox_er <> ox_el <> [opToOxArith op, Ox.MkAp, Ox.MkAp]
 
 compileExpr (H.Let var val body) = do 
-  ox_val <- compileExpr val
-  ox_body <- compileExpr body
-  pushStmt $ Ox.Let var ox_val
-  pure ox_body
+  error "impl"
+  -- ox_val <- compileExpr val
+  -- ox_body <- compileExpr body
+  -- pushStmt $ Ox.Let var ox_val
+  -- pure ox_body
 
 
 -- Rust Gen
 
 
 oxProgToRust :: Ox.Prog -> T.Text
-oxProgToRust prog = 
-  let fns :: T.Text
-      fns = T.intercalate "\n" $ map oxFnToRust prog
-   in fn_imports <> "\n" <> fns
+oxProgToRust (prog_stmts, prog_fns) = 
+  fn_imports <> oxProgStmtsToRust prog_stmts
+  -- let fns :: T.Text
+  --     fns = T.intercalate "\n" $ map oxFnToRust prog
+  --  in fn_imports <> "\n" <> fns
   where 
-    fn_imports = "use crate::builtins::*;\n"
+    fn_imports = "use crate::builtins::*;\n\n"
+
+
+oxProgStmtsToRust :: [Ox.Stmt] -> T.Text
+oxProgStmtsToRust stmts = T.unlines $ 
+  [ "pub fn prog(state: &mut State) {" ]
+  <> map (tabIndent . oxStmtToRust) stmts  
+  <> [ "}" ]
 
 
 oxFnToRust :: Ox.Fn -> T.Text
-oxFnToRust (Ox.Fn name stmts) = 
+oxFnToRust (Ox.Fn name name' arity stmts) = 
   T.unlines $ fn_begin <> map (tabIndent . oxStmtToRust) stmts <> fn_end
   where 
     fn_begin = [ "pub fn " <> name <> "() -> Node {" ]
@@ -124,6 +135,9 @@ oxFnToRust (Ox.Fn name stmts) =
 oxStmtToRust :: Ox.Stmt -> T.Text
 oxStmtToRust (Ox.Let n v) = "let " <> n <> ": Node = " <> oxExprToRust v <> ";"
 oxStmtToRust (Ox.Ret e) = "return " <> oxExprToRust e <> ";"
+oxStmtToRust (Ox.PushInt x) = "state.push_int(" <> showt x <> ");"
+oxStmtToRust (Ox.PushFn fn_def_name) = "state.push_fn(" <> fn_def_name <> ");"
+oxStmtToRust Ox.MkAp = "state.mk_ap();"
 
 
 oxExprToRust :: Ox.Expr -> T.Text
@@ -146,11 +160,11 @@ oxArithToRust Ox.Mul = "mul"
 oxArithToRust Ox.Div = "div"
 
 
-opToOxArith :: H.IOp -> Ox.BiArith
-opToOxArith H.Plus  = Ox.Add
-opToOxArith H.Minus = Ox.Sub
-opToOxArith H.Mult  = Ox.Mul
-opToOxArith H.Div   = Ox.Div
+opToOxArith :: H.IOp -> Ox.Stmt
+opToOxArith H.Plus  = Ox.PushFn Ox.add_fn_def
+opToOxArith H.Minus = Ox.PushFn Ox.sub_fn_def
+opToOxArith H.Mult  = Ox.PushFn Ox.mul_fn_def
+opToOxArith H.Div   = Ox.PushFn Ox.div_fn_def
 
 
 tabIndent :: T.Text -> T.Text
